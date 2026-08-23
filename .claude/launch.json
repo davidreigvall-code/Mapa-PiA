@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mapa-pia-local",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [".claude/dev-server.js"],
+      "port": 5510,
+      "autoPort": true
+    }
+  ]
+}
