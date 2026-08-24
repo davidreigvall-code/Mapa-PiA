@@ -1419,7 +1419,7 @@
         const html = buildPopupHtml(c);
 
         layer.on('mouseover', function (e) {
-          if (veureTotesActiu) return;
+          if (veureTotesActiu || nomSeleccionat) return;
           // Mentre hi ha una comarca fixada per clic, el hover d'altres
           // comarques no li roba el popup; només es pot canviar fent clic.
           if (comarcaFixada && comarcaFixada.nom !== c.nom) return;
@@ -1429,7 +1429,7 @@
         });
 
         layer.on('mousemove', function (e) {
-          if (veureTotesActiu) return;
+          if (veureTotesActiu || nomSeleccionat) return;
           if (comarcaFixada) return;
           positionCustomPopup(e.originalEvent.clientX, e.originalEvent.clientY);
         });
