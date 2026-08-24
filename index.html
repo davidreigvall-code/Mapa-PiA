@@ -192,7 +192,7 @@
   header h1 {
     margin: 0;
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
-    font-size: clamp(12px, 0.8333vw, 22.4px);
+    font-size: clamp(15px, 1.0417vw, 28px);
     font-weight: 400;
     letter-spacing: 0.13em;
     text-transform: uppercase;
@@ -202,22 +202,22 @@
   #legend-bar {
     display: flex;
     align-items: center;
-    gap: clamp(7.5px, 0.5208vw, 14px);
+    gap: clamp(9.4px, 0.651vw, 17.5px);
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
-    font-size: clamp(8.25px, 0.5729vw, 15.4px);
+    font-size: clamp(10.3px, 0.716vw, 19.25px);
     color: #d8cdb8;
   }
 
   #legend-bar .swatches {
     display: flex;
     align-items: center;
-    height: clamp(7.5px, 0.5208vw, 14px);
+    height: clamp(9.4px, 0.651vw, 17.5px);
     border: 1px solid #4a3f38;
   }
 
   #legend-bar .swatches span {
-    width: clamp(12px, 0.8333vw, 22.4px);
-    height: clamp(7.5px, 0.5208vw, 14px);
+    width: clamp(15px, 1.0417vw, 28px);
+    height: clamp(9.4px, 0.651vw, 17.5px);
     display: block;
   }
 
@@ -409,9 +409,8 @@
     background: #ffffff;
   }
 
-  /* Noms de les comarques d'interès, al mig del polígon. Sense fons
-     blanc ni ombrejat: només el text, directament sobre el color de la
-     comarca. */
+  /* Noms de les comarques d'interès, al mig del polígon: només el text,
+     sense cap fons ni cartellet al darrere. */
   .comarca-label {
     background: transparent;
     border: none;
@@ -433,11 +432,11 @@
     border: none;
     box-shadow: none;
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
-    font-weight: 400;
-    font-size: 7px;
+    font-weight: 500;
+    font-size: 7.5px;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: #b8ac95;
+    color: #8f8368;
     text-shadow: none;
     pointer-events: none;
     white-space: nowrap;
@@ -601,7 +600,7 @@
 
   #tooltip-hint {
     position: absolute;
-    bottom: 46px;
+    bottom: 14px;
     right: 14px;
     z-index: 500;
     background: rgba(20,18,15,0.9);
@@ -614,9 +613,12 @@
     pointer-events: none;
   }
 
+  /* Buit per defecte (el text estàtic s'ha tret): només s'omple, i per
+     tant només es veu, quan hi ha un avís real (p. ex. dades no
+     carregades). :empty l'amaga sencer mentre no hi hagi res a dir. */
   #source-note {
     position: absolute;
-    bottom: 14px;
+    bottom: 46px;
     right: 14px;
     z-index: 500;
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
@@ -625,6 +627,10 @@
     background: rgba(250,248,244,0.88);
     padding: 4px 8px;
     border-radius: 3px;
+  }
+
+  #source-note:empty {
+    display: none;
   }
 
   /* Llegenda dels colors de format dels punts de rodatge */
@@ -706,7 +712,7 @@
   <div id="map-wrap">
     <div id="map"></div>
     <div id="tooltip-hint">Passa el ratolí o toca una comarca acolorida per veure el detall de produccions</div>
-    <div id="source-note">Límits comarcals: geometria real (GeoJSON)</div>
+    <div id="source-note"></div>
     <div id="format-legend"></div>
   </div>
 </div>
@@ -1242,8 +1248,8 @@
   }
 
   const contextStyle = {
-    color: "#e9dfc9",
-    weight: 0.75,
+    color: "#c9bda3",
+    weight: 1.25,
     fillColor: "#ffffff",
     fillOpacity: 1
   };
@@ -1379,8 +1385,8 @@
   // inventada.
   L.geoJSON(contextExteriorGeoJSON, {
     style: {
-      color: "#ddd6c7",
-      weight: 0.6,
+      color: "#c9bda3",
+      weight: 1.25,
       fillColor: "#ffffff",
       fillOpacity: 1,
       interactive: false
