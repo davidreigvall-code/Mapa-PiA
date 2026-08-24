@@ -113,10 +113,19 @@
     flex-direction: column;
   }
 
+  /* Tots els valors de la capçalera que segueixen ("clamp(min, Xvw, max)")
+     comparteixen la mateixa proporció de base (referència: pantalla de
+     1920px) i els mateixos límits d'escala (entre el 75% i el 140% de la
+     mida de referència, és a dir, es mantenen fixos per sota de 1440px i
+     per sobre de 2688px). Com que tots creixen/s'aturen exactament al
+     mateix punt, mai poden desquadrar-se entre ells (logo, ratlla, marge
+     del títol, mides de lletra) encara que la finestra canviï de mida —
+     a diferència de l'intent anterior, que barrejava un valor en vw amb
+     un altre en px fix i acabaven descoordinats. */
   header {
     background: var(--panel);
     color: var(--paper);
-    height: 94px;
+    min-height: clamp(70.5px, 4.8958vw, 131.6px);
     padding: 0 28px;
     box-sizing: border-box;
     border-bottom: 3px solid var(--daurat);
@@ -141,7 +150,7 @@
      baix no talli cap contingut visible del logotip. */
   header .title-block {
     position: relative;
-    padding-left: 360px;
+    padding-left: clamp(270px, 18.75vw, 504px);
   }
 
   /* Alineat amb el marge esquerre del contingut (28px, el mateix que fa
@@ -154,7 +163,7 @@
     left: 28px;
     top: 50%;
     transform: translateY(-50%);
-    height: 110px;
+    height: clamp(82.5px, 5.7292vw, 154px);
     width: auto;
     display: block;
   }
@@ -165,17 +174,15 @@
     gap: 2px;
   }
 
-  /* Ratlla vertical daurada com a marcador decoratiu: en lloc d'anar
-     enganxada al text, es posiciona alineada amb el límit del panell
-     lateral (on hi apareix la barra de desplaçament quan la llista de
-     produccions no hi cap sencera). Penja directament de <header> (no de
-     .title-block) perquè el càlcul de "left" no arrossegui el padding
-     del capçalera: així coincideix exactament amb la mateixa amplada
-     clamp() que fa servir #side-panel com a flex-basis, encara que la
-     finestra canviï de mida. */
+  /* Ratlla vertical daurada com a marcador decoratiu a l'esquerra del
+     títol, entre el logo i el text. Coordenada fixa (no vw ni % de
+     l'amplada de finestra/panell) dins l'espai que .title-block ja
+     reserva per al logo (padding-left: 360px): així mai depèn ni de la
+     mida de pantalla ni de la llargada del text del títol, i no pot
+     tornar a acabar dibuixant-se per sobre seu. */
   header .title-rule {
     position: absolute;
-    left: calc(clamp(280px, 28vw, 420px) - 14px);
+    left: clamp(255px, 17.7083vw, 476px);
     top: 0;
     bottom: 0;
     width: 3px;
@@ -185,7 +192,7 @@
   header h1 {
     margin: 0;
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 16px;
+    font-size: clamp(12px, 0.8333vw, 22.4px);
     font-weight: 400;
     letter-spacing: 0.13em;
     text-transform: uppercase;
@@ -195,22 +202,22 @@
   #legend-bar {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: clamp(7.5px, 0.5208vw, 14px);
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 11px;
+    font-size: clamp(8.25px, 0.5729vw, 15.4px);
     color: #d8cdb8;
   }
 
   #legend-bar .swatches {
     display: flex;
     align-items: center;
-    height: 10px;
+    height: clamp(7.5px, 0.5208vw, 14px);
     border: 1px solid #4a3f38;
   }
 
   #legend-bar .swatches span {
-    width: 16px;
-    height: 10px;
+    width: clamp(12px, 0.8333vw, 22.4px);
+    height: clamp(7.5px, 0.5208vw, 14px);
     display: block;
   }
 
@@ -1295,8 +1302,7 @@
   // el zoom bloquejat de l'enquadrament anterior no pot créixer ni encongir-
   // se) i després tornar a fixar el mínim (l'usuari pot apropar-se, però no
   // allunyar-se més enllà de l'enquadrament inicial) a l'escala correcta
-  // per a la mida real del contenidor en cada moment (previsualització
-  // normal, pantalla completa, o qualsevol redimensionament de finestra).
+  // per a la mida real del contenidor en cada moment.
   function refitMap(intent) {
     intent = intent || 0;
     map.invalidateSize();
