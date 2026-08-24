@@ -274,14 +274,31 @@
     margin: 0;
   }
 
-  .sp-types-title {
+  .sp-btn-veure-totes {
+    display: block;
+    width: 100%;
+    margin: 0 0 14px;
+    padding: 9px 12px;
+    background: transparent;
+    border: 1px solid var(--daurat);
+    border-radius: 3px;
+    color: var(--daurat);
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
     font-size: 10.5px;
     font-weight: 500;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--daurat);
-    margin: 0 0 12px;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .sp-btn-veure-totes:hover {
+    background: rgba(247, 186, 71, 0.12);
+  }
+
+  .sp-btn-veure-totes.actiu {
+    background: var(--daurat);
+    color: var(--panel);
   }
 
   .sp-prods-list {
@@ -292,10 +309,19 @@
   .sp-prod-row {
     padding: 9px 0;
     border-bottom: 1px solid #3a332a;
+    cursor: pointer;
   }
 
   .sp-prod-row:last-child {
     border-bottom: none;
+  }
+
+  /* Producció seleccionada (clicada des de la llista o des d'un punt del
+     mapa): coincideix visualment amb el punt destacat que apareix al mapa. */
+  .sp-prod-row.seleccionada {
+    background: rgba(247, 186, 71, 0.1);
+    margin: 0 -28px;
+    padding: 9px 28px;
   }
 
   .sp-prod-top {
@@ -331,9 +357,19 @@
   }
 
   .sp-prod-format {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     font-size: 10.5px;
     color: #cbbfa9;
     font-style: italic;
+  }
+
+  .sp-format-dot {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 1px;
   }
 
   .sp-prod-comarques {
@@ -396,6 +432,30 @@
   .comarca-label::before,
   .comarca-label-context::before {
     display: none;
+  }
+
+  /* Cartellet del punt destacat (seleccionat des de la llista o clicant
+     un punt del mapa): tooltip permanent, amb el mateix llenguatge visual
+     que les etiquetes de comarca. El color de fons ve del color del
+     format (--label-color, fixat per JS a cada cartellet en crear-lo);
+     --malva és només el valor de reserva si mai no s'establís. */
+  .punt-produccio-label {
+    background: var(--label-color, var(--malva));
+    border: none;
+    box-shadow: 0 3px 10px rgba(20,18,15,0.35);
+    border-radius: 3px;
+    padding: 4px 8px;
+    font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 500;
+    font-size: 11px;
+    color: var(--ink);
+    text-shadow: none;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .punt-produccio-label::before {
+    border-top-color: var(--label-color, var(--malva)) !important;
   }
 
   /* Popup propi (no natiu de Leaflet), fixat respecte la finestra: es
@@ -552,6 +612,37 @@
     padding: 4px 8px;
     border-radius: 3px;
   }
+
+  /* Llegenda dels colors de format dels punts de rodatge */
+  #format-legend {
+    position: absolute;
+    bottom: 14px;
+    left: 14px;
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 10px;
+    color: #7d7362;
+    background: rgba(250,248,244,0.88);
+    padding: 6px 10px;
+    border-radius: 3px;
+  }
+
+  #format-legend .fl-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+  }
+
+  #format-legend .fl-dot {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 1px;
+  }
 </style>
 </head>
 <body>
@@ -587,7 +678,7 @@
     <hr class="sp-divider" />
 
     <div>
-      <h2 class="sp-types-title">Totes les produccions</h2>
+      <button type="button" id="btn-veure-totes" class="sp-btn-veure-totes">Veure totes les produccions al mapa</button>
       <div class="sp-prods-list" id="prods-list"></div>
     </div>
   </aside>
@@ -596,6 +687,7 @@
     <div id="map"></div>
     <div id="tooltip-hint">Passa el ratolí o toca una comarca acolorida per veure el detall de produccions</div>
     <div id="source-note">Límits comarcals: geometria real (GeoJSON)</div>
+    <div id="format-legend"></div>
   </div>
 </div>
 
@@ -676,6 +768,16 @@
     const colNom = capcaleres.findIndex(h => h.startsWith("nom"));
     const colFormat = capcaleres.findIndex(h => h.startsWith("format"));
     const colImpacte = capcaleres.findIndex(h => h.startsWith("impacte"));
+    const colLatitud = capcaleres.findIndex(h => h.startsWith("lat"));
+    const colLongitud = capcaleres.findIndex(h => h.startsWith("long"));
+
+    // Latitud/Longitud del rodatge (columnes opcionals): si no hi són, o
+    // estan buides per a una fila, la producció simplement no té punt al
+    // mapa — no és un error, moltes files encara no les tindran omplertes.
+    function parseCoordenada(str) {
+      if (!str) return NaN;
+      return parseFloat(str.trim().replace(",", "."));
+    }
 
     const produccionsPerComarca = {};
     files.slice(filaCapcalera + 1).forEach(fila => {
@@ -685,7 +787,9 @@
       const produccio = {
         nom: nomProjecte,
         format: (fila[colFormat] || "").trim(),
-        impacte: parseImpacte(fila[colImpacte])
+        impacte: parseImpacte(fila[colImpacte]),
+        lat: colLatitud !== -1 ? parseCoordenada(fila[colLatitud]) : NaN,
+        lon: colLongitud !== -1 ? parseCoordenada(fila[colLongitud]) : NaN
       };
       (produccionsPerComarca[nomComarca] = produccionsPerComarca[nomComarca] || []).push(produccio);
     });
@@ -752,29 +856,86 @@
   comarques.forEach(c => {
     c.produccions.forEach(p => {
       if (!produccionsPerNom.has(p.nom)) {
-        produccionsPerNom.set(p.nom, { nom: p.nom, format: p.format, impacte: 0, comarques: [] });
+        produccionsPerNom.set(p.nom, { nom: p.nom, format: p.format, impacte: 0, comarques: [], ubicacions: [] });
       }
       const entrada = produccionsPerNom.get(p.nom);
       entrada.impacte += p.impacte;
       entrada.comarques.push(c.nom);
+      // Una producció repartida entre diverses comarques pot tenir un
+      // rodatge a cadascuna: es guarda una ubicació per cada fila que
+      // tingui coordenades vàlides (no només la primera), perquè en
+      // seleccionar-la des de la llista apareguin totes al mapa alhora.
+      if (isFinite(p.lat) && isFinite(p.lon)) {
+        entrada.ubicacions.push({ comarca: c.nom, lat: p.lat, lon: p.lon });
+      }
     });
   });
   const produccionsOrdenades = [...produccionsPerNom.values()].sort((a, b) => b.impacte - a.impacte);
 
+  // Color per tipus de format (Curtmetratge, Llargmetratge, Sèrie, Spot,
+  // Videoclip, Reportatge...). El text ve escrit a mà al full ("Curtmetratge
+  // acadèmic", "Curtmetratge documental", etc.), per això es classifica
+  // buscant la paraula clau del format base dins el text, en lloc de
+  // comparar-lo sencer — així "Curtmetratge acadèmic" i "Curtmetratge
+  // documental" comparteixen el mateix color que "Curtmetratge".
+  // Tons clars (pastel): amb els originals més foscos (p. ex. el vermell
+  // fosc de Llargmetratge, #7a1e26), el text fosc dels cartellets i de la
+  // llista quedava massa poc llegible a sobre.
+  const FORMAT_COLORS = [
+    { keyword: "llargmetratge", color: "#e0917d", label: "Llargmetratge" },
+    { keyword: "curtmetratge", color: "#fbd08a", label: "Curtmetratge" },
+    { keyword: "sèrie", color: "#fdb0b5", label: "Sèrie" },
+    { keyword: "spot", color: "#9ec9d4", label: "Spot" },
+    { keyword: "videoclip", color: "#c6b3dc", label: "Videoclip" },
+    { keyword: "reportatge", color: "#a9cea4", label: "Reportatge" }
+  ];
+  const FORMAT_COLOR_DEFAULT = "#c4bbae";
+  const FORMAT_LABEL_DEFAULT = "Altres";
+  function colorFormat(format) {
+    const f = (format || "").toLowerCase();
+    const match = FORMAT_COLORS.find(fc => f.includes(fc.keyword));
+    return match ? match.color : FORMAT_COLOR_DEFAULT;
+  }
+
+  // Llegenda del mapa: només hi surten les categories que realment tenen
+  // alguna producció avui (evita mostrar-hi colors que no s'usen).
+  const formatsUsats = new Set(produccionsOrdenades.map(p => {
+    const f = (p.format || "").toLowerCase();
+    const match = FORMAT_COLORS.find(fc => f.includes(fc.keyword));
+    return match ? match.label : FORMAT_LABEL_DEFAULT;
+  }));
+  const legendItems = FORMAT_COLORS.filter(fc => formatsUsats.has(fc.label));
+  if (formatsUsats.has(FORMAT_LABEL_DEFAULT)) {
+    legendItems.push({ color: FORMAT_COLOR_DEFAULT, label: FORMAT_LABEL_DEFAULT });
+  }
+  const formatLegendEl = document.getElementById('format-legend');
+  formatLegendEl.innerHTML = legendItems.map(fc => `
+    <span class="fl-item"><span class="fl-dot" style="background:${fc.color}"></span>${fc.label}</span>
+  `).join("");
+
+  // files.dataset.nom permet retrobar la fila d'una producció des del
+  // mapa (en clicar un punt) per marcar-la com a seleccionada, sense
+  // haver de mantenir una segona llista paral·lela d'elements.
   const prodsListEl = document.getElementById('prods-list');
   produccionsOrdenades.forEach(p => {
     const row = document.createElement('div');
     row.className = 'sp-prod-row';
+    row.dataset.nom = p.nom;
     row.innerHTML = `
       <div class="sp-prod-top">
         <span class="sp-prod-nom">${p.nom}</span>
         <span class="sp-prod-impacte">${formatEuros(p.impacte)}</span>
       </div>
       <div class="sp-prod-meta">
-        <span class="sp-prod-format">${p.format}</span>
+        <span class="sp-prod-format"><span class="sp-format-dot" style="background:${colorFormat(p.format)}"></span>${p.format}</span>
         <span class="sp-prod-comarques">${p.comarques.join(", ")}</span>
       </div>
     `;
+    // seleccionaProduccio() es defineix més avall (un cop el mapa ja
+    // existeix), però com és una "function" normal queda hoisted i es pot
+    // fer servir aquí sense problemes: en el moment del clic ja estarà
+    // definida.
+    row.addEventListener('click', () => seleccionaProduccio(p));
     prodsListEl.appendChild(row);
   });
 
@@ -1307,6 +1468,20 @@
     paddingBottomRight: [0, 0]
   };
 
+  // Zoom de l'enquadrament inicial (les 6 comarques senceres), actualitzat
+  // per refitMap(). Serveix de referència fixa per al lleuger zoom que fa
+  // seleccionaProduccio(): sempre calcula el zoom de selecció a partir
+  // d'AQUEST valor (constant), no del zoom actual del mapa — si no,
+  // seleccionar produccions repetidament aniria acumulant zoom cada cop
+  // més profund en lloc d'apropar-se sempre el mateix punt.
+  let zoomBase = 0;
+
+  // Capa amb els punts de la producció seleccionada (definida més avall,
+  // però cal declarar-la aquí: actualitzaLimitsSegonsZoom() —que la fa
+  // servir— ja s'executa un cop dins refitMap(), abans de la resta del
+  // codi de selecció de produccions).
+  let capaSeleccionada = null;
+
   // Recalcula la mida i l'enquadrament del mapa per al contenidor ACTUAL.
   // Cal desbloquejar temporalment min/maxZoom (si no, un fitBounds fet amb
   // el zoom bloquejat de l'enquadrament anterior no pot créixer ni encongir-
@@ -1336,6 +1511,7 @@
     // més enllà de l'enquadrament d'entrada. L'apropament arriba fins a 5
     // nivells més.
     const zoomInicial = map.getZoom();
+    zoomBase = zoomInicial;
     map.setMinZoom(zoomInicial);
     map.setMaxZoom(zoomInicial + 5);
     actualitzaLimitsSegonsZoom();
@@ -1353,6 +1529,16 @@
     map.dragging.enable();
     if (map.getZoom() <= map.getMinZoom()) {
       map.setMaxBounds(targetBounds.pad(0.08));
+    } else if (capaSeleccionada) {
+      // Producció seleccionada: es treu del tot la restricció d'arrossegament
+      // mentre estigui activa. No n'hi ha prou amb ampliar els límits perquè
+      // continguin el punt (provat abans): si el punt queda a prop de la
+      // vora, encara que el CENTRE hi càpiga, el requadre visible sencer a
+      // aquest zoom pot sobresortir-ne una mica, i Leaflet el torna a
+      // encaixar de cop — d'aquí la petita estrebada. Es torna a aplicar la
+      // restricció normal en desseleccionar (desfixaProduccio crida aquesta
+      // mateixa funció).
+      map.setMaxBounds(null);
     } else {
       map.setMaxBounds(comarquesBounds.pad(0.15));
     }
@@ -1507,6 +1693,142 @@
     sw.style.background = hex;
     legendEl.appendChild(sw);
   });
+
+  // ============================================================
+  // PUNTS DE RODATGE — ubicació exacta de cada producció (Latitud/
+  // Longitud al full de Google). És opcional: una producció sense
+  // coordenades vàlides simplement no hi apareix, no trenca res.
+  // ============================================================
+
+  // Pane propi per als punts, per sobre del pane per defecte on van les
+  // comarques (overlayPane, z-index 400): en passar el ratolí per sobre
+  // d'una comarca, el seu polígon fa bringToFront() dins el SEU pane, cosa
+  // que podria tapar els punts si compartissin pane. Amb un pane propi de
+  // z-index més alt, els punts sempre queden per sobre, independentment
+  // d'aquest reordenament.
+  map.createPane('punts-pane');
+  map.getPane('punts-pane').style.zIndex = 450;
+
+  // Capa amb tots els punts alhora (es mostra/amaga sencera amb el botó
+  // "Veure totes les produccions al mapa"). No s'afegeix al mapa d'entrada.
+  const puntsProduccions = L.layerGroup();
+  produccionsOrdenades.forEach(p => {
+    p.ubicacions.forEach(u => {
+      L.circleMarker([u.lat, u.lon], {
+        pane: 'punts-pane',
+        radius: 5,
+        color: "#ffffff",
+        weight: 1.5,
+        fillColor: colorFormat(p.format),
+        fillOpacity: 1
+      })
+        .bindTooltip(p.ubicacions.length > 1 ? `${p.nom} (${u.comarca})` : p.nom, { direction: 'top', offset: [0, -6] })
+        .on('click', () => seleccionaProduccio(p))
+        .addTo(puntsProduccions);
+    });
+  });
+
+  const btnVeureTotes = document.getElementById('btn-veure-totes');
+  btnVeureTotes.addEventListener('click', () => {
+    if (map.hasLayer(puntsProduccions)) {
+      map.removeLayer(puntsProduccions);
+      btnVeureTotes.classList.remove('actiu');
+    } else {
+      puntsProduccions.addTo(map);
+      btnVeureTotes.classList.add('actiu');
+    }
+  });
+
+  // Punt destacat: només n'hi ha un alhora (seleccionar-ne un altre fa
+  // desaparèixer l'anterior). És independent de puntsProduccions: es pot
+  // seleccionar una producció tant si "veure totes" està activat com si
+  // no.
+  // (capaSeleccionada ja es declara més amunt, a prop de zoomBase)
+  let filaSeleccionadaEl = null;
+  let nomSeleccionat = null;
+
+  function desfixaProduccio() {
+    if (capaSeleccionada) {
+      map.removeLayer(capaSeleccionada);
+      capaSeleccionada = null;
+      // Restaura la restricció normal d'arrossegament (treta mentre hi
+      // havia una producció seleccionada).
+      actualitzaLimitsSegonsZoom();
+    }
+    if (filaSeleccionadaEl) {
+      filaSeleccionadaEl.classList.remove('seleccionada');
+      filaSeleccionadaEl = null;
+    }
+    nomSeleccionat = null;
+  }
+
+  // Funciona com una casella de selecció: clicar la mateixa producció que
+  // ja està seleccionada la desmarca (els punts desapareixen); clicar-ne
+  // una altra substitueix la selecció. Una producció repartida entre
+  // diverses comarques pot tenir més d'una ubicació de rodatge: totes hi
+  // apareixen alhora.
+  function seleccionaProduccio(p) {
+    if (!p.ubicacions.length) return;
+
+    if (nomSeleccionat === p.nom) {
+      desfixaProduccio();
+      return;
+    }
+
+    desfixaProduccio();
+
+    // L.featureGroup() (no layerGroup): cal getBounds() per ampliar els
+    // límits d'arrossegament a actualitzaLimitsSegonsZoom().
+    capaSeleccionada = L.featureGroup();
+    p.ubicacions.forEach(u => {
+      L.circleMarker([u.lat, u.lon], {
+        pane: 'punts-pane',
+        radius: 7,
+        color: "#ffffff",
+        weight: 2,
+        fillColor: colorFormat(p.format),
+        fillOpacity: 1
+      })
+        .bindTooltip(p.ubicacions.length > 1 ? `${p.nom} (${u.comarca})` : p.nom, {
+          direction: 'top',
+          offset: [0, -8],
+          permanent: true,
+          className: 'punt-produccio-label'
+        })
+        .addTo(capaSeleccionada);
+    });
+    capaSeleccionada.addTo(map);
+    const colorSeleccio = colorFormat(p.format);
+    capaSeleccionada.eachLayer(marker => {
+      marker.openTooltip();
+      // El cartellet és un tooltip de Leaflet (no un element propi): cal
+      // fixar-hi el color del format un cop obert, via la variable CSS
+      // --label-color que fa servir .punt-produccio-label.
+      marker.getTooltip().getElement().style.setProperty('--label-color', colorSeleccio);
+    });
+    nomSeleccionat = p.nom;
+
+    filaSeleccionadaEl = prodsListEl.querySelector(`.sp-prod-row[data-nom="${CSS.escape(p.nom)}"]`);
+    if (filaSeleccionadaEl) {
+      filaSeleccionadaEl.classList.add('seleccionada');
+      filaSeleccionadaEl.scrollIntoView({ block: 'nearest' });
+    }
+
+    // Lleuger zoom cap a la ubicació (o ubicacions) seleccionada: mig punt
+    // de zoom per sobre de zoomBase (l'enquadrament inicial), no de
+    // map.getZoom() — així seleccionar produccions una darrere l'altra
+    // sempre acaba al mateix nivell d'apropament, mai s'acumula.
+    const zoomSeleccio = Math.min(zoomBase + 0.5, map.getMaxZoom());
+    if (p.ubicacions.length === 1) {
+      map.flyTo([p.ubicacions[0].lat, p.ubicacions[0].lon], zoomSeleccio);
+    } else {
+      const bounds = L.latLngBounds(p.ubicacions.map(u => [u.lat, u.lon]));
+      // maxZoom evita que, si les ubicacions són molt properes entre
+      // elles, flyToBounds s'acosti massa — com a molt el lleuger zoom
+      // de zoomSeleccio, encara que hi hagi espai per apropar-se més.
+      map.flyToBounds(bounds, { padding: [60, 60], maxZoom: zoomSeleccio });
+    }
+  }
 })();
 </script>
 
