@@ -409,16 +409,16 @@
     background: #ffffff;
   }
 
-  /* Noms de les comarques d'interès, al mig del polígon */
+  /* Noms de les comarques d'interès, al mig del polígon. Sense fons
+     blanc ni ombrejat: només el text, directament sobre el color de la
+     comarca. */
   .comarca-label {
-    background: rgba(255,255,255,0.82);
+    background: transparent;
     border: none;
     box-shadow: none;
-    border-radius: 2px;
-    padding: 1px 4px;
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
-    font-weight: 500;
-    font-size: 7.5px;
+    font-weight: 600;
+    font-size: 9.5px;
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: var(--ink);
