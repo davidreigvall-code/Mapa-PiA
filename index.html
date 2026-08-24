@@ -1029,7 +1029,13 @@
     boxZoom: true,
     keyboard: false,
     touchZoom: true,
-    tap: false
+    tap: false,
+    // Per defecte Leaflet arrodoneix el zoom de fitBounds() al nivell
+    // sencer més proper (zoomSnap: 1), cosa que pot arrodonir cap amunt
+    // (més zoom) del que calia per encabir exactament els límits. Amb
+    // zoomSnap:0 el zoom és continu, així fitBounds sempre encaixa amb
+    // precisió, sense marge de sobra provocat només per l'arrodoniment.
+    zoomSnap: 0
   });
 
   function targetStyle(c) {
@@ -1270,15 +1276,19 @@
     }
   }).addTo(map);
 
-  // Encaixa la vista centrada en les 6 comarques d'interès. El requadre
-  // s'ha reduït un 5% addicional respecte a l'enquadrament anterior (que ja
-  // tenia un 6% de reducció) per guanyar una mica més de zoom; les comarques
-  // veïnes de Tarragona i Barcelona ja incorporades (Conca de Barberà,
-  // Priorat, Ribera d'Ebre, Anoia) continuen donant context als marges.
-  const targetBounds = L.latLngBounds(
-    L.latLng(41.362068, 0.53348),
-    L.latLng(42.034807, 1.471132)
-  );
+  // Encaixa la vista centrada en les 6 comarques d'interès. Calculat a
+  // partir de la geometria real (no un rectangle escrit a mà): un
+  // rectangle fix anterior no cobria del tot la forma real de Noguera,
+  // Garrigues i Segrià, cosa que en pantalles amb una relació d'aspecte
+  // més vertical (on la vertical és la dimensió que limita el fitBounds)
+  // les retallava per dalt/baix. Amb .pad(0.03) es deixa un petit marge
+  // perquè el traç i les etiquetes de les comarques del límit no quedin
+  // enganxats a la vora mateixa del mapa.
+  const comarquesObjectiuGeoJSON = {
+    type: "FeatureCollection",
+    features: comarquesGeoJSON.features.filter(f => f.properties.target)
+  };
+  const targetBounds = L.geoJSON(comarquesObjectiuGeoJSON).getBounds().pad(0.03);
 
   // Extensió de les 16 comarques carregades (les 6 objectiu + les de
   // context): defineix fins on es pot arrossegar el mapa en fer zoom in,
@@ -1420,7 +1430,7 @@
     return anells;
   }
 
-  const comarquesObjectiu = comarquesGeoJSON.features.filter(f => f.properties.target);
+  const comarquesObjectiu = comarquesObjectiuGeoJSON.features;
 
   // Es redibuixa dins refitMap() (no només un cop a l'inici): cal que el
   // mapa ja tingui una vista/projecció establerta abans de projectar
