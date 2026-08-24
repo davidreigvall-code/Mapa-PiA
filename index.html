@@ -249,6 +249,11 @@
     gap: 16px;
   }
 
+  .sp-stats-row {
+    display: flex;
+    gap: 28px;
+  }
+
   .sp-stat-value {
     font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
     font-weight: 700;
@@ -317,11 +322,20 @@
   }
 
   /* Producció seleccionada (clicada des de la llista o des d'un punt del
-     mapa): coincideix visualment amb el punt destacat que apareix al mapa. */
+     mapa): coincideix visualment amb el punt destacat que apareix al mapa.
+     Marge negatiu perquè el fons ocupi tota l'amplada del panell (fins als
+     28px de padding), i una ratlla daurada a l'esquerra com a indicador
+     addicional, ben visible encara que el fons de color sigui subtil. */
   .sp-prod-row.seleccionada {
-    background: rgba(247, 186, 71, 0.1);
+    background: rgba(247, 186, 71, 0.22);
     margin: 0 -28px;
-    padding: 9px 28px;
+    padding: 9px 28px 9px 24px;
+    border-left: 4px solid var(--daurat);
+  }
+
+  .sp-prod-row.seleccionada .sp-prod-nom {
+    color: var(--daurat);
+    font-weight: 700;
   }
 
   .sp-prod-top {
@@ -665,9 +679,15 @@
 <div id="content-row">
   <aside id="side-panel">
     <div class="sp-stats">
-      <div>
-        <div class="sp-stat-value" id="stat-total-produccions">—</div>
-        <div class="sp-stat-label">produccions</div>
+      <div class="sp-stats-row">
+        <div>
+          <div class="sp-stat-value" id="stat-total-produccions">—</div>
+          <div class="sp-stat-label">produccions</div>
+        </div>
+        <div>
+          <div class="sp-stat-value" id="stat-total-localitzacions">—</div>
+          <div class="sp-stat-label">localitzacions</div>
+        </div>
       </div>
       <div>
         <div class="sp-stat-value" id="stat-total-impacte">—</div>
@@ -844,8 +864,13 @@
 
   const totalProduccions = produccionsUniques.length;
   const totalImpacteGlobal = totesLesProduccions.reduce((sum, p) => sum + p.impacte, 0);
+  // Cada fila amb Latitud/Longitud vàlides és una ubicació (un punt al
+  // mapa); una mateixa producció pot aportar-ne diverses si es reparteix
+  // entre comarques, per això es compten les files, no les produccions.
+  const totalLocalitzacions = totesLesProduccions.filter(p => isFinite(p.lat) && isFinite(p.lon)).length;
 
   document.getElementById('stat-total-produccions').textContent = totalProduccions;
+  document.getElementById('stat-total-localitzacions').textContent = totalLocalitzacions;
   document.getElementById('stat-total-impacte').textContent = formatEuros(totalImpacteGlobal);
 
   // Desglossament complet: una producció pot repartir-se entre diverses
@@ -1394,6 +1419,7 @@
         const html = buildPopupHtml(c);
 
         layer.on('mouseover', function (e) {
+          if (veureTotesActiu) return;
           // Mentre hi ha una comarca fixada per clic, el hover d'altres
           // comarques no li roba el popup; només es pot canviar fent clic.
           if (comarcaFixada && comarcaFixada.nom !== c.nom) return;
@@ -1403,6 +1429,7 @@
         });
 
         layer.on('mousemove', function (e) {
+          if (veureTotesActiu) return;
           if (comarcaFixada) return;
           positionCustomPopup(e.originalEvent.clientX, e.originalEvent.clientY);
         });
@@ -1475,6 +1502,12 @@
   // seleccionar produccions repetidament aniria acumulant zoom cada cop
   // més profund en lloc d'apropar-se sempre el mateix punt.
   let zoomBase = 0;
+
+  // Quan "Veure totes les produccions al mapa" està actiu, es desactiva
+  // el hover de comarques (definit més avall a geoLayer): amb tots els
+  // punts i les seves etiquetes ja mostrats, el popup de comarca en passar
+  // el ratolí per sobre només afegia soroll visual.
+  let veureTotesActiu = false;
 
   // Capa amb els punts de la producció seleccionada (definida més avall,
   // però cal declarar-la aquí: actualitzaLimitsSegonsZoom() —que la fa
@@ -1719,7 +1752,7 @@
         radius: 5,
         color: "#ffffff",
         weight: 1.5,
-        fillColor: colorFormat(p.format),
+        fillColor: "#14120f",
         fillOpacity: 1
       })
         .bindTooltip(p.ubicacions.length > 1 ? `${p.nom} (${u.comarca})` : p.nom, { direction: 'top', offset: [0, -6] })
@@ -1730,12 +1763,19 @@
 
   const btnVeureTotes = document.getElementById('btn-veure-totes');
   btnVeureTotes.addEventListener('click', () => {
+    // Si hi havia una producció seleccionada, es desmarca en activar
+    // "veure totes" (evita el conflicte visual d'un punt destacat enmig
+    // de tots els altres); desfixaProduccio() ja porta el mapa de tornada
+    // al centre/zoom inicial.
+    desfixaProduccio();
     if (map.hasLayer(puntsProduccions)) {
       map.removeLayer(puntsProduccions);
       btnVeureTotes.classList.remove('actiu');
+      veureTotesActiu = false;
     } else {
       puntsProduccions.addTo(map);
       btnVeureTotes.classList.add('actiu');
+      veureTotesActiu = true;
     }
   });
 
@@ -1747,19 +1787,34 @@
   let filaSeleccionadaEl = null;
   let nomSeleccionat = null;
 
-  function desfixaProduccio() {
+  // Neteja només els elements visuals de la selecció (capa de punts, fila
+  // ressaltada a la llista), sense tocar la restricció d'arrossegament del
+  // mapa. Es fa servir en CANVIAR de producció seleccionada: si es
+  // restaurés aquí la restricció normal (com feia abans), podia disparar
+  // una correcció sobtada de la vista un instant abans de començar el
+  // moviment cap a la nova producció — es notava sobretot amb produccions
+  // de diverses ubicacions.
+  function netejaSeleccioProduccio() {
     if (capaSeleccionada) {
       map.removeLayer(capaSeleccionada);
       capaSeleccionada = null;
-      // Restaura la restricció normal d'arrossegament (treta mentre hi
-      // havia una producció seleccionada).
-      actualitzaLimitsSegonsZoom();
     }
     if (filaSeleccionadaEl) {
       filaSeleccionadaEl.classList.remove('seleccionada');
       filaSeleccionadaEl = null;
     }
     nomSeleccionat = null;
+  }
+
+  // Desselecciona del tot (no hi ha cap nova selecció a continuació): a
+  // més de netejar la visual, restaura la restricció normal
+  // d'arrossegament del mapa i torna a portar el mapa al centre/zoom
+  // inicial (les 6 comarques senceres), en lloc de deixar-lo on hagués
+  // quedat l'última selecció.
+  function desfixaProduccio() {
+    netejaSeleccioProduccio();
+    actualitzaLimitsSegonsZoom();
+    map.flyTo(targetBounds.getCenter(), zoomBase, { duration: 1, easeLinearity: 0.2 });
   }
 
   // Funciona com una casella de selecció: clicar la mateixa producció que
@@ -1775,7 +1830,7 @@
       return;
     }
 
-    desfixaProduccio();
+    netejaSeleccioProduccio();
 
     // L.featureGroup() (no layerGroup): cal getBounds() per ampliar els
     // límits d'arrossegament a actualitzaLimitsSegonsZoom().
@@ -1786,7 +1841,7 @@
         radius: 7,
         color: "#ffffff",
         weight: 2,
-        fillColor: colorFormat(p.format),
+        fillColor: "#14120f",
         fillOpacity: 1
       })
         .bindTooltip(p.ubicacions.length > 1 ? `${p.nom} (${u.comarca})` : p.nom, {
@@ -1819,14 +1874,18 @@
     // map.getZoom() — així seleccionar produccions una darrere l'altra
     // sempre acaba al mateix nivell d'apropament, mai s'acumula.
     const zoomSeleccio = Math.min(zoomBase + 0.5, map.getMaxZoom());
+    // duration/easeLinearity allarguen l'animació (per defecte Leaflet la
+    // calcula automàticament segons la distància, i sol quedar massa
+    // ràpida i sobtada per a un simple lleuger apropament).
+    const animacioSeleccio = { duration: 1, easeLinearity: 0.2 };
     if (p.ubicacions.length === 1) {
-      map.flyTo([p.ubicacions[0].lat, p.ubicacions[0].lon], zoomSeleccio);
+      map.flyTo([p.ubicacions[0].lat, p.ubicacions[0].lon], zoomSeleccio, animacioSeleccio);
     } else {
       const bounds = L.latLngBounds(p.ubicacions.map(u => [u.lat, u.lon]));
       // maxZoom evita que, si les ubicacions són molt properes entre
       // elles, flyToBounds s'acosti massa — com a molt el lleuger zoom
       // de zoomSeleccio, encara que hi hagi espai per apropar-se més.
-      map.flyToBounds(bounds, { padding: [60, 60], maxZoom: zoomSeleccio });
+      map.flyToBounds(bounds, { padding: [60, 60], maxZoom: zoomSeleccio, ...animacioSeleccio });
     }
   }
 })();
