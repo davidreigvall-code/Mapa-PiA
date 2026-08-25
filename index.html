@@ -1562,13 +1562,16 @@
         const html = buildPopupHtml(c);
 
         layer.on('mouseover', function (e) {
-          if (veureTotesActiu || nomSeleccionat) return;
+          if (veureTotesActiu) return;
           // Mentre hi ha una comarca expandida (clicada), o mentre el mapa
           // encara torna cap a la posició inicial d'haver-ne plegat una
           // (plegantComarca), no es mostra el popup de hover per a cap
           // comarca: els cartellets dels punts ja en donen el detall
           // directament sobre el mapa, i no volem que el popup aparegui
-          // enmig del zoom out.
+          // enmig del zoom out. Una producció seleccionada NO bloqueja el
+          // hover (ni el clic, més avall): l'usuari ha de poder seguir
+          // explorant altres comarques sense haver de desseleccionar-la
+          // abans.
           if (comarcaExpandida || plegantComarca) return;
           this.setStyle(targetHoverStyle(c));
           this.bringToFront();
@@ -1576,7 +1579,7 @@
         });
 
         layer.on('mousemove', function (e) {
-          if (veureTotesActiu || nomSeleccionat) return;
+          if (veureTotesActiu) return;
           if (comarcaExpandida || plegantComarca) return;
           // Segueix el ratolí (posició), però sense recalcular costatPopupActual:
           // aquest ja es va decidir un sol cop a 'mouseover'.
@@ -1592,7 +1595,14 @@
 
         layer.on('click', function (e) {
           if (e.originalEvent) e.originalEvent.stopPropagation();
-          if (veureTotesActiu || nomSeleccionat || acabaDArrossegar) return;
+          if (veureTotesActiu || acabaDArrossegar) return;
+          // Si hi havia una producció seleccionada (des de la llista, amb
+          // zoom), clicar una comarca la substitueix en lloc de quedar
+          // bloquejat fins que l'usuari la desmarqui a mà: només es
+          // netegen els elements visuals (sense el flyTo de tornada al
+          // centre, ja que expandeixComarca() ja porta el mapa cap a la
+          // comarca clicada tot seguit).
+          if (nomSeleccionat) netejaSeleccioProduccio();
           expandeixComarca(c, this);
         });
       } else {
