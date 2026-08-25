@@ -279,31 +279,45 @@
     margin: 0;
   }
 
+  /* Prova d'usabilitat (25/08/2026, 1 participant): amb contorn fi i
+     10.5px, transparent per defecte, la usuària no el va trobar ("no he
+     trobat el botó de veure totes") — l'ull li anava directe a la llista
+     de produccions, més grossa i vistosa, just a sota. Ara surt amb fons
+     sòlid des del principi (com abans només en estat .actiu) i lletra més
+     gran; un cop activat es calma cap a l'estil de contorn (ja no cal
+     cridar l'atenció, l'usuari ja sap que està mostrant tots els punts). */
   .sp-btn-veure-totes {
     display: block;
     width: 100%;
     margin: 0 0 14px;
-    padding: 9px 12px;
-    background: transparent;
+    padding: 11px 12px;
+    background: var(--daurat);
     border: 1px solid var(--daurat);
-    border-radius: 3px;
-    color: var(--daurat);
+    border-radius: 4px;
+    color: var(--panel);
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 10.5px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
     text-align: center;
     cursor: pointer;
+    box-shadow: 0 2px 10px rgba(247, 186, 71, 0.3);
   }
 
   .sp-btn-veure-totes:hover {
-    background: rgba(247, 186, 71, 0.12);
+    filter: brightness(1.08);
   }
 
   .sp-btn-veure-totes.actiu {
-    background: var(--daurat);
-    color: var(--panel);
+    background: transparent;
+    color: var(--daurat);
+    box-shadow: none;
+  }
+
+  .sp-btn-veure-totes.actiu:hover {
+    background: rgba(247, 186, 71, 0.12);
+    filter: none;
   }
 
   .sp-prods-list {
@@ -455,15 +469,18 @@
   .punt-produccio-label {
     background: var(--label-color, var(--malva));
     border: none;
-    box-shadow: 0 3px 10px rgba(20,18,15,0.35);
+    box-shadow: 0 2px 8px rgba(20,18,15,0.35);
     border-radius: 3px;
-    padding: 4px 8px;
+    padding: 2px 5px;
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
     font-weight: 500;
-    font-size: 11px;
+    font-size: 9px;
     color: var(--ink);
     text-shadow: none;
     white-space: nowrap;
+    /* pointer-events es reactiva només als cartellets permanents (comarca
+       expandida / producció seleccionada) via JS, no aquí globalment: vegeu
+       el comentari a dalt de expandeixComarca() sobre per què. */
     pointer-events: none;
   }
 
@@ -487,37 +504,8 @@
     pointer-events: none;
   }
 
-  /* Quan l'usuari ha fet clic a una comarca (en lloc de només passar-hi el
-     ratolí), el popup queda fixat: torna a rebre esdeveniments de ratolí
-     (perquè es pugui prémer la creueta o fer scroll dins seu) i mostra el
-     botó de tancar. */
-  #custom-popup.pinned {
-    pointer-events: auto;
-  }
-
   .comarca-popup {
     position: relative;
-  }
-
-  .comarca-popup .cp-close {
-    display: none;
-    position: absolute;
-    top: 6px;
-    right: 8px;
-    z-index: 1;
-    width: 22px;
-    height: 22px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(0,0,0,0.15);
-    color: var(--paper);
-    font-size: 16px;
-    line-height: 1;
-    cursor: pointer;
-  }
-
-  #custom-popup.pinned .cp-close {
-    display: block;
   }
 
   .comarca-popup .cp-head {
@@ -1041,45 +1029,171 @@
   document.body.appendChild(popupEl);
   const mapWrapEl = document.getElementById('map-wrap');
 
-  // ---- Fixar el popup en fer clic (no només al passar el ratolí) ----
-  // Al mòbil/tàctil no hi ha "hover", així que sense això el detall d'una
-  // comarca seria inaccessible. Un clic fixa el popup obert (amb botó de
-  // tancar); un clic fora, la creueta, o Esc el tanquen.
-  let comarcaFixada = null; // { nom, layer, c }
+  // ---- Expandir una comarca en fer-hi clic ----
+  // En lloc de fixar el popup (com abans), un clic sobre una comarca hi fa
+  // un petit zoom i en desplega els punts de rodatge (mateix estil visual
+  // que "veure totes", però només amb les produccions d'aquesta comarca).
+  // Prova d'usabilitat (25/08/2026): la usuària esperava exactament
+  // això — que clicant una comarca es veiessin les seves produccions —
+  // en lloc de la llista fixa amb botó de tancar que hi havia abans.
+  // Funciona com una casella de selecció: clicar la comarca ja expandida
+  // la plega; clicar-ne una altra la substitueix.
+  let comarcaExpandida = null; // nom
+  let capaPuntsComarca = null;
+  // Mentre el mapa torna cap a la posició inicial en plegar una comarca
+  // (plegaComarca), es manté a true fins que el flyTo hi arriba de debò
+  // (moveend): el hover d'altres comarques queda desactivat durant aquest
+  // instant, perquè no aparegui el popup enmig del zoom out.
+  let plegantComarca = false;
 
-  function fixaComarca(layer, c, html, clientX, clientY) {
-    comarcaFixada = { nom: c.nom, layer, c };
-    layer.setStyle(targetHoverStyle(c));
-    layer.bringToFront();
-    popupEl.innerHTML = html;
-    popupEl.classList.add('pinned');
-    popupEl.style.display = 'block';
-    const posicio = decideixPosicioPopup(c.nom, layer);
-    costatPopupActual = posicio.h;
-    posicioVerticalActual = posicio.v;
-    positionCustomPopup(clientX, clientY);
+  // Un clic natiu del navegador es dispara en soltar el botó sobre el
+  // mateix element on s'ha premut, encara que pel mig hi hagi hagut un
+  // arrossegament llarg — Leaflet ho gestiona internament per al seu
+  // propi dragging, però el nostre listener de 'click' a cada comarca no
+  // en sap res, així que arrossegar per dins una comarca expandida (que
+  // pot ocupar tota la pantalla) es prenia per un clic i la plegava. Es
+  // marca quan un arrossegament real acaba de succeir, durant un instant
+  // (fins al següent tick) perquè el 'click' que ve immediatament després
+  // el pugui detectar i ignorar-lo.
+  // (el listener 'dragend' es registra més avall, a prop de 'zoomend')
+  let acabaDArrossegar = false;
+
+  function plegaComarca() {
+    if (!capaPuntsComarca) return;
+    // Atura qualsevol animació flyTo/flyToBounds encara en curs abans de
+    // llançar-ne una de nova: si es deixa en marxa, la correcció de
+    // maxBounds xoca amb els fotogrames pendents del flyTo anterior — és
+    // el que feia que els punts "es buguegessin" en clicar/desclicar
+    // comarques ràpidament. NO es crida actualitzaLimitsSegonsZoom() abans
+    // del flyTo (cridar setMaxBounds() amb la vista encara zoomejada feia
+    // saltar el mapa de cop a un lloc equivocat abans de començar
+    // l'animació) — es deixa que ho faci el listener de 'zoomend' un cop
+    // el flyTo hagi arribat de debò al zoom mínim final.
+    map.stop();
+    map.removeLayer(capaPuntsComarca);
+    capaPuntsComarca = null;
+    comarcaExpandida = null;
+    plegantComarca = true;
+    map.once('moveend', () => { plegantComarca = false; });
+    map.flyTo(targetBounds.getCenter(), zoomBase, { duration: 1, easeLinearity: 0.2 });
   }
 
-  function desfixaComarca() {
-    if (!comarcaFixada) return;
-    comarcaFixada.layer.setStyle(targetStyle(comarcaFixada.c));
-    comarcaFixada = null;
-    popupEl.classList.remove('pinned');
-    popupEl.style.display = 'none';
-  }
+  function expandeixComarca(c, layer) {
+    // Si l'usuari clica una comarca mentre encara s'estava fent el zoom
+    // out d'haver-ne plegat una altra, aquest nou clic ja porta la seva
+    // pròpia animació: no cal seguir esperant l'anterior.
+    plegantComarca = false;
+    if (comarcaExpandida === c.nom) {
+      plegaComarca();
+      return;
+    }
+    map.stop();
+    if (capaPuntsComarca) map.removeLayer(capaPuntsComarca);
+    comarcaExpandida = c.nom;
+    // El popup de hover d'aquesta mateixa comarca pot seguir obert just
+    // en clicar (el ratolí encara hi és a sobre, així que no arriba mai un
+    // 'mouseout' que el tanqui): es tanca explícitament perquè no quedi
+    // penjat mentre dura el zoom cap a la comarca.
+    hideCustomPopup();
 
-  popupEl.addEventListener('click', e => {
-    if (e.target.closest('.cp-close')) desfixaComarca();
-  });
+    capaPuntsComarca = L.featureGroup();
+    const marcadors = [];
+    produccionsOrdenades.forEach(p => {
+      const colorPunt = colorFormat(p.format);
+      p.ubicacions.filter(u => u.comarca === c.nom).forEach(u => {
+        const marcador = L.circleMarker([u.lat, u.lon], {
+          pane: 'punts-pane',
+          radius: 6,
+          color: "#ffffff",
+          weight: 1.5,
+          fillColor: "#14120f",
+          fillOpacity: 1
+        })
+          // No permanent a l'inici (s'obre sol si el marcador ja és al
+          // mapa): es vol que els cartellets apareguin junts un cop el
+          // zoom ha arribat de debò, no enmig de l'animació.
+          .bindTooltip(etiquetaUbicacio(p, u), {
+            direction: 'top',
+            offset: [0, -6],
+            className: 'punt-produccio-label'
+          })
+          .on('tooltipopen', function () {
+            const tooltipEl = this.getTooltip().getElement();
+            tooltipEl.style.setProperty('--label-color', colorPunt);
+            // Aquest cartellet és permanent (no es tanca mai en treure el
+            // ratolí de sobre), així que reactivar-hi els clics és segur:
+            // no hi ha risc que es "robi" el hover al punt i es tanqui sol
+            // (el bug que sí que afectava els cartellets NOMÉS-hover de
+            // puntsProduccions, vegeu el comentari de la seva CSS).
+            tooltipEl.style.pointerEvents = 'auto';
+            tooltipEl.style.cursor = 'pointer';
+            // El cartellet ha de fer la mateixa funció que el punt en
+            // clicar-lo: reassignar onclick (no addEventListener) evita
+            // acumular listeners si el tooltip es torna a obrir.
+            tooltipEl.onclick = e => { e.stopPropagation(); seleccionaProduccio(p, { nomesLlista: true }); };
+          })
+          .on('click', () => seleccionaProduccio(p, { nomesLlista: true }))
+          .addTo(capaPuntsComarca);
+        // Comarca a evitar en repartir els cartellets (evitaSolapamentCartellets):
+        // aquí sempre és la mateixa, ja que tots els punts d'aquesta capa
+        // pertanyen a la comarca expandida.
+        marcador._comarcaNom = c.nom;
+        marcadors.push(marcador);
+      });
+    });
+    capaPuntsComarca.addTo(map);
+    actualitzaLimitsSegonsZoom();
+
+    // Es registra ABANS de llançar el flyToBounds (no després): si mai
+    // arribés a resoldre's de manera síncrona, cal que el listener ja hi
+    // sigui per no perdre l'esdeveniment. Un cop el flyToBounds ha
+    // arribat de debò (moveend), es despleguen alhora els cartellets de
+    // totes les produccions de la comarca. Es comprova que encara sigui
+    // LA MATEIXA comarca expandida per si l'usuari l'ha plegada o n'ha
+    // triat una altra mentre volava.
+    map.once('moveend', () => {
+      if (comarcaExpandida !== c.nom) return;
+      marcadors.forEach(marcador => {
+        const tooltip = marcador.getTooltip();
+        if (tooltip) tooltip.options.permanent = true;
+      });
+      evitaSolapamentCartellets(marcadors);
+      marcadors.forEach(marcador => marcador.openTooltip());
+    });
+
+    // Zoom petit i lent (més suau que el de seleccionar una producció):
+    // prou per distingir la comarca sense allunyar-se massa de la resta.
+    map.flyToBounds(layer.getBounds(), {
+      padding: [40, 40],
+      maxZoom: Math.min(zoomBase + 1, map.getMaxZoom()),
+      duration: 1.6,
+      easeLinearity: 0.15
+    });
+  }
 
   document.addEventListener('click', e => {
-    if (!comarcaFixada) return;
+    if (!comarcaExpandida) return;
+    // Un clic que ve just després d'arrossegar el mapa (per exemple,
+    // arrossegant des del fons de la pròpia comarca expandida, no des d'un
+    // punt) no l'ha de plegar: el navegador encara dispara un 'click'
+    // natiu en soltar el botó, encara que pel mig hi hagi hagut un
+    // arrossegament llarg. Mateix flag que ja evita el mateix problema al
+    // 'click' de la comarca (més avall).
+    if (acabaDArrossegar) return;
     if (popupEl.contains(e.target)) return;
-    desfixaComarca();
+    // Un clic sobre un dels punts (o el seu cartellet) de la pròpia
+    // comarca expandida no l'ha de plegar — ho gestiona directament
+    // seleccionaProduccio(). L.DomEvent.stopPropagation() al listener de
+    // clic del marcador NO evita que aquest clic natiu de la SVG arribi
+    // igualment fins al document (provat: Leaflet no el bloqueja del tot
+    // aquí), així que es comprova explícitament l'origen del clic en lloc
+    // de confiar en aturar-ne la propagació.
+    if (e.target.closest('.leaflet-punts-pane-pane, .punt-produccio-label')) return;
+    plegaComarca();
   });
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') desfixaComarca();
+    if (e.key === 'Escape') plegaComarca();
   });
 
   // Costat (esquerra/dreta del cursor) on s'obre el popup: es decideix una
@@ -1193,7 +1307,6 @@
 
   function showCustomPopup(nomComarca, layer, html, clientX, clientY) {
     popupEl.innerHTML = html;
-    popupEl.classList.remove('pinned');
     popupEl.style.display = 'block';
     const posicio = decideixPosicioPopup(nomComarca, layer);
     costatPopupActual = posicio.h;
@@ -1202,7 +1315,6 @@
   }
 
   function hideCustomPopup() {
-    popupEl.classList.remove('pinned');
     popupEl.style.display = 'none';
   }
 
@@ -1224,7 +1336,6 @@
 
     return `
       <div class="comarca-popup">
-        <button type="button" class="cp-close" aria-label="Tanca">&times;</button>
         <div class="cp-head">
           <h2>${c.nom}</h2>
           <div class="cp-stats">
@@ -1452,9 +1563,13 @@
 
         layer.on('mouseover', function (e) {
           if (veureTotesActiu || nomSeleccionat) return;
-          // Mentre hi ha una comarca fixada per clic, el hover d'altres
-          // comarques no li roba el popup; només es pot canviar fent clic.
-          if (comarcaFixada && comarcaFixada.nom !== c.nom) return;
+          // Mentre hi ha una comarca expandida (clicada), o mentre el mapa
+          // encara torna cap a la posició inicial d'haver-ne plegat una
+          // (plegantComarca), no es mostra el popup de hover per a cap
+          // comarca: els cartellets dels punts ja en donen el detall
+          // directament sobre el mapa, i no volem que el popup aparegui
+          // enmig del zoom out.
+          if (comarcaExpandida || plegantComarca) return;
           this.setStyle(targetHoverStyle(c));
           this.bringToFront();
           showCustomPopup(c.nom, this, html, e.originalEvent.clientX, e.originalEvent.clientY);
@@ -1462,26 +1577,23 @@
 
         layer.on('mousemove', function (e) {
           if (veureTotesActiu || nomSeleccionat) return;
-          if (comarcaFixada) return;
+          if (comarcaExpandida || plegantComarca) return;
           // Segueix el ratolí (posició), però sense recalcular costatPopupActual:
           // aquest ja es va decidir un sol cop a 'mouseover'.
           positionCustomPopup(e.originalEvent.clientX, e.originalEvent.clientY);
         });
 
         layer.on('mouseout', function () {
-          if (comarcaFixada && comarcaFixada.nom === c.nom) return;
-          this.setStyle(targetStyle(c));
+          // Si la comarca està expandida, es manté ressaltada; el popup de
+          // hover sí que es tanca sempre (només és una previsualització).
+          if (comarcaExpandida !== c.nom) this.setStyle(targetStyle(c));
           hideCustomPopup();
         });
 
         layer.on('click', function (e) {
           if (e.originalEvent) e.originalEvent.stopPropagation();
-          if (comarcaFixada && comarcaFixada.nom === c.nom) {
-            desfixaComarca();
-          } else {
-            if (comarcaFixada) comarcaFixada.layer.setStyle(targetStyle(comarcaFixada.c));
-            fixaComarca(this, c, html, e.originalEvent.clientX, e.originalEvent.clientY);
-          }
+          if (veureTotesActiu || nomSeleccionat || acabaDArrossegar) return;
+          expandeixComarca(c, this);
         });
       } else {
         // Comarca veïna: només context, sense interacció ni dades
@@ -1575,12 +1687,12 @@
     // definitiu correcte (no un valor a mig animar).
     map.fitBounds(targetBounds, { ...fitOptions, animate: false });
     // El zoom-out màxim és la posició inicial mateixa: no es pot allunyar
-    // més enllà de l'enquadrament d'entrada. L'apropament arriba fins a 5
-    // nivells més.
+    // més enllà de l'enquadrament d'entrada. L'apropament arriba fins a 3
+    // nivells més (abans 5: es podia arribar a un apropament excessiu).
     const zoomInicial = map.getZoom();
     zoomBase = zoomInicial;
     map.setMinZoom(zoomInicial);
-    map.setMaxZoom(zoomInicial + 5);
+    map.setMaxZoom(zoomInicial + 3);
     actualitzaLimitsSegonsZoom();
     aplicaPatroRatllat();
     dibuixaContornObjectiu();
@@ -1596,21 +1708,26 @@
     map.dragging.enable();
     if (map.getZoom() <= map.getMinZoom()) {
       map.setMaxBounds(targetBounds.pad(0.08));
-    } else if (capaSeleccionada) {
-      // Producció seleccionada: es treu del tot la restricció d'arrossegament
-      // mentre estigui activa. No n'hi ha prou amb ampliar els límits perquè
-      // continguin el punt (provat abans): si el punt queda a prop de la
-      // vora, encara que el CENTRE hi càpiga, el requadre visible sencer a
-      // aquest zoom pot sobresortir-ne una mica, i Leaflet el torna a
-      // encaixar de cop — d'aquí la petita estrebada. Es torna a aplicar la
-      // restricció normal en desseleccionar (desfixaProduccio crida aquesta
-      // mateixa funció).
+    } else if (capaSeleccionada || capaPuntsComarca) {
+      // Producció seleccionada o comarca expandida: es treu del tot la
+      // restricció d'arrossegament mentre estigui activa. No n'hi ha prou
+      // amb ampliar els límits perquè continguin el punt (provat abans):
+      // si el punt queda a prop de la vora, encara que el CENTRE hi
+      // càpiga, el requadre visible sencer a aquest zoom pot sobresortir-
+      // ne una mica, i Leaflet el torna a encaixar de cop — d'aquí la
+      // petita estrebada. Es torna a aplicar la restricció normal en
+      // desseleccionar/plegar (desfixaProduccio/plegaComarca criden
+      // aquesta mateixa funció).
       map.setMaxBounds(null);
     } else {
       map.setMaxBounds(comarquesBounds.pad(0.15));
     }
   }
   map.on('zoomend', actualitzaLimitsSegonsZoom);
+  map.on('dragend', () => {
+    acabaDArrossegar = true;
+    setTimeout(() => { acabaDArrossegar = false; }, 0);
+  });
 
   // ---- Contorn exterior de les 6 comarques de Ponent i Acció ----
   // Ressegueix en vermell només la vora de fora del bloc format per les 6
@@ -1798,30 +1915,92 @@
   }
 
   // Reparteix els cartellets al voltant del seu punt (dalt/baix/dreta/
-  // esquerra) perquè dos punts propers no acabin amb els cartellets
-  // superposats: per cada marcador, en píxels de pantalla a la vista
-  // ACTUAL del mapa, es descarten les direccions ja fetes servir per
-  // marcadors que hi ha a menys de 70px i es tria la primera que quedi
-  // lliure (dalt per defecte si cap ho està, o si el marcador va sol).
+  // esquerra, i variants desplaçades en diagonal) perquè no acabin
+  // superposats ni entre ells ni amb el nom de la seva comarca (etiqueta
+  // permanent, sempre present al mapa). En lloc d'una distància fixa entre
+  // punts (massa poc precisa: no tenia en compte la llargada real del
+  // text), es calcula el rectangle real que ocuparà cada cartellet — a
+  // partir del seu text i la mida de lletra actual — i es tria, per a cada
+  // marcador, la direcció amb menys xocs contra els cartellets ja
+  // col·locats i contra l'etiqueta de la seva comarca (marcador._comarcaNom,
+  // fixat en crear cada marcador). Les 4 variants diagonals (a més de les 4
+  // cardinals) donen més marge en zones amb molts punts molt junts (p. ex.
+  // Lleida ciutat, amb 3-4 produccions gairebé a sobre les unes de les
+  // altres): Leaflet no té una direcció pròpia "diagonal", però un
+  // desplaçament horitzontal afegit a l'offset d'una direcció top/bottom ja
+  // desplaça tot el cartellet cap a un costat.
   const DIRECCIONS_CARTELLET = [
-    { key: 'top', offset: [0, -8] },
-    { key: 'bottom', offset: [0, 8] },
-    { key: 'right', offset: [12, 0] },
-    { key: 'left', offset: [-12, 0] }
+    { key: 'top', offset: [0, -6] },
+    { key: 'bottom', offset: [0, 6] },
+    { key: 'right', offset: [9, 0] },
+    { key: 'left', offset: [-9, 0] },
+    { key: 'top', offset: [16, -6] },
+    { key: 'top', offset: [-16, -6] },
+    { key: 'bottom', offset: [16, 6] },
+    { key: 'bottom', offset: [-16, 6] }
   ];
+
+  // Mides aproximades d'un cartellet (CSS .punt-produccio-label: font-size
+  // 9px, padding 2px 5px): amplada mitjana de caràcter i alçada de línia
+  // estimades, prou properes a la real per detectar solapaments sense
+  // haver d'obrir el tooltip abans d'hora només per mesurar-lo.
+  const AMPLADA_CARACTER_CARTELLET = 5.4;
+  const ALCADA_CARTELLET = 15;
+  function rectangleCartell(cx, cy, direccioKey, text) {
+    const amplada = text.length * AMPLADA_CARACTER_CARTELLET + 12;
+    let left, top;
+    if (direccioKey === 'top') { left = cx - amplada / 2; top = cy - ALCADA_CARTELLET; }
+    else if (direccioKey === 'bottom') { left = cx - amplada / 2; top = cy; }
+    else if (direccioKey === 'right') { left = cx; top = cy - ALCADA_CARTELLET / 2; }
+    else { left = cx - amplada; top = cy - ALCADA_CARTELLET / 2; }
+    return { left, right: left + amplada, top, bottom: top + ALCADA_CARTELLET };
+  }
+  function rectanglesXoquen(a, b) {
+    return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  }
+
+  const MARGE_OBSTACLE_ETIQUETA = 6;
+  function rectangleEtiquetaComarca(nomComarca) {
+    if (!nomComarca) return null;
+    const els = document.querySelectorAll('.comarca-label, .comarca-label-context');
+    for (const el of els) {
+      if (el.textContent === nomComarca) {
+        const r = el.getBoundingClientRect();
+        return {
+          left: r.left - MARGE_OBSTACLE_ETIQUETA,
+          right: r.right + MARGE_OBSTACLE_ETIQUETA,
+          top: r.top - MARGE_OBSTACLE_ETIQUETA,
+          bottom: r.bottom + MARGE_OBSTACLE_ETIQUETA
+        };
+      }
+    }
+    return null;
+  }
+
   function evitaSolapamentCartellets(marcadors) {
-    const posicionsUsades = [];
+    const mapRect = map.getContainer().getBoundingClientRect();
+    const rectanglesColocats = [];
     marcadors.forEach(marcador => {
       const tooltip = marcador.getTooltip();
       if (!tooltip) return;
+      const text = String(tooltip.getContent());
       const punt = map.latLngToContainerPoint(marcador.getLatLng());
-      const usades = new Set(
-        posicionsUsades.filter(p => punt.distanceTo(p.punt) < 70).map(p => p.direccio)
-      );
-      const opcio = DIRECCIONS_CARTELLET.find(d => !usades.has(d.key)) || DIRECCIONS_CARTELLET[0];
-      posicionsUsades.push({ punt, direccio: opcio.key });
-      tooltip.options.direction = opcio.key;
-      tooltip.options.offset = L.point(opcio.offset);
+      const cx = mapRect.left + punt.x, cy = mapRect.top + punt.y;
+      const obstacle = rectangleEtiquetaComarca(marcador._comarcaNom);
+      let millorOpcio = null, millorRectangle = null, menysXocs = Infinity;
+      DIRECCIONS_CARTELLET.forEach(d => {
+        const rect = rectangleCartell(cx + d.offset[0], cy + d.offset[1], d.key, text);
+        let xocs = rectanglesColocats.filter(r => rectanglesXoquen(rect, r)).length;
+        if (obstacle && rectanglesXoquen(rect, obstacle)) xocs += 1;
+        if (xocs < menysXocs) {
+          menysXocs = xocs;
+          millorOpcio = d;
+          millorRectangle = rect;
+        }
+      });
+      rectanglesColocats.push(millorRectangle);
+      tooltip.options.direction = millorOpcio.key;
+      tooltip.options.offset = L.point(millorOpcio.offset);
     });
   }
 
@@ -1831,7 +2010,7 @@
   produccionsOrdenades.forEach(p => {
     const colorPunt = colorFormat(p.format);
     p.ubicacions.forEach(u => {
-      L.circleMarker([u.lat, u.lon], {
+      const marcador = L.circleMarker([u.lat, u.lon], {
         pane: 'punts-pane',
         radius: 5,
         color: "#ffffff",
@@ -1848,19 +2027,54 @@
         // que --label-color (llegida per .punt-produccio-label) s'ha de
         // fixar en cada obertura, no un sol cop en crear el marcador.
         .on('tooltipopen', function () {
-          this.getTooltip().getElement().style.setProperty('--label-color', colorPunt);
+          const tooltipEl = this.getTooltip().getElement();
+          tooltipEl.style.setProperty('--label-color', colorPunt);
+          // El cartellet ha de fer la mateixa funció que el punt en
+          // clicar-lo (com qualsevol altre cartellet).
+          tooltipEl.style.pointerEvents = 'auto';
+          tooltipEl.style.cursor = 'pointer';
+          tooltipEl.onclick = e => { e.stopPropagation(); seleccionaProduccio(p, { nomesLlista: true }); };
+          // Amb el cartellet clicable, si el ratolí passa del punt cap al
+          // seu propi cartellet (que sovint el toca o el tapa una mica,
+          // sobretot amb noms llargs o punts molt junts), aquest ara
+          // intercepta el mouseout del punt: sense tractar-ho, Leaflet
+          // tancava el tooltip a l'instant (no permanent) en detectar-lo, i
+          // semblava que el punt desapareixia en passar-hi per sobre. Es
+          // manté obert mentre el ratolí estigui dins del punt O del seu
+          // cartellet, i només es tanca en sortir de tots dos alhora.
+          tooltipEl.onmouseleave = e => {
+            const elMarcador = marcador.getElement();
+            if (elMarcador && e.relatedTarget && elMarcador.contains(e.relatedTarget)) return;
+            marcador.closeTooltip();
+          };
         })
-        .on('click', () => seleccionaProduccio(p))
+        .on('click', () => seleccionaProduccio(p, { nomesLlista: true }))
         .addTo(puntsProduccions);
+      // Substitueix el tancament automàtic de Leaflet en mouseout (que no
+      // sap res del cartellet) pel propi: no tanca si el ratolí ha anat cap
+      // al cartellet (el gestiona tooltipEl.onmouseleave, a dalt).
+      marcador.off('mouseout');
+      marcador.on('mouseout', function (e) {
+        const tooltip = marcador.getTooltip();
+        const tooltipEl = tooltip && tooltip.getElement();
+        const relacionat = e.originalEvent && e.originalEvent.relatedTarget;
+        if (tooltipEl && relacionat && tooltipEl.contains(relacionat)) return;
+        marcador.closeTooltip();
+      });
     });
   });
 
   const btnVeureTotes = document.getElementById('btn-veure-totes');
   btnVeureTotes.addEventListener('click', () => {
-    // Si hi havia una producció seleccionada, es desmarca en activar
-    // "veure totes" (evita el conflicte visual d'un punt destacat enmig
-    // de tots els altres); desfixaProduccio() ja porta el mapa de tornada
-    // al centre/zoom inicial.
+    // Si hi havia una producció seleccionada o una comarca expandida, es
+    // desmarquen en activar "veure totes" (evita el conflicte visual amb
+    // tots els punts alhora); desfixaProduccio() ja porta el mapa de
+    // tornada al centre/zoom inicial.
+    if (capaPuntsComarca) {
+      map.removeLayer(capaPuntsComarca);
+      capaPuntsComarca = null;
+      comarcaExpandida = null;
+    }
     desfixaProduccio();
     if (map.hasLayer(puntsProduccions)) {
       map.removeLayer(puntsProduccions);
@@ -1880,6 +2094,11 @@
   // (capaSeleccionada ja es declara més amunt, a prop de zoomBase)
   let filaSeleccionadaEl = null;
   let nomSeleccionat = null;
+  // Si la selecció actual s'ha fet amb zoom + marcador destacat (des de la
+  // llista) o només marcant la fila (des d'un punt/cartellet ja visible al
+  // mapa). Cal recordar-ho per saber, en desseleccionar, si també s'ha de
+  // tornar a portar el mapa al centre (desfixaProduccio) o no.
+  let seleccioAmbZoom = false;
 
   // Neteja només els elements visuals de la selecció (capa de punts, fila
   // ressaltada a la llista), sense tocar la restricció d'arrossegament del
@@ -1927,15 +2146,28 @@
   }
 
   // Funciona com una casella de selecció: clicar la mateixa producció que
-  // ja està seleccionada la desmarca (els punts desapareixen); clicar-ne
-  // una altra substitueix la selecció. Una producció repartida entre
-  // diverses comarques pot tenir més d'una ubicació de rodatge: totes hi
-  // apareixen alhora.
-  function seleccionaProduccio(p) {
+  // ja està seleccionada la desmarca; clicar-ne una altra substitueix la
+  // selecció. Una producció repartida entre diverses comarques pot tenir
+  // més d'una ubicació de rodatge: totes hi apareixen alhora.
+  //
+  // opcions.nomesLlista: true quan el clic ve d'un punt o cartellet ja
+  // visible al mapa (amb "veure totes" o una comarca expandida) — en
+  // aquest cas el punt ja s'hi veu, així que NOMÉS es marca la fila
+  // corresponent a la llista: no es mou el mapa, no es crea cap marcador
+  // destacat, i la resta de punts es mantenen exactament igual (no es
+  // plega la comarca expandida ni res). Des de la llista (sense aquesta
+  // opció) es manté el comportament complet —zoom cap a la ubicació i
+  // marcador destacat— perquè en aquell cas el punt no és visible.
+  function seleccionaProduccio(p, opcions) {
+    opcions = opcions || {};
     if (!p.ubicacions.length) return;
 
     if (nomSeleccionat === p.nom) {
-      desfixaProduccio();
+      if (seleccioAmbZoom) {
+        desfixaProduccio();
+      } else {
+        netejaSeleccioProduccio();
+      }
       return;
     }
 
@@ -1946,11 +2178,32 @@
     map.stop();
     netejaSeleccioProduccio();
 
+    if (opcions.nomesLlista) {
+      nomSeleccionat = p.nom;
+      seleccioAmbZoom = false;
+      filaSeleccionadaEl = prodsListEl.querySelector(`.sp-prod-row[data-nom="${CSS.escape(p.nom)}"]`);
+      if (filaSeleccionadaEl) {
+        filaSeleccionadaEl.classList.add('seleccionada');
+        filaSeleccionadaEl.scrollIntoView({ block: 'nearest' });
+      }
+      return;
+    }
+    seleccioAmbZoom = true;
+
+    // Si hi havia una comarca expandida, la selecció (amb zoom) d'una
+    // producció concreta la substitueix (evita mostrar alhora els punts de
+    // tota la comarca i el punt destacat de la producció).
+    if (capaPuntsComarca) {
+      map.removeLayer(capaPuntsComarca);
+      capaPuntsComarca = null;
+      comarcaExpandida = null;
+    }
+
     // L.featureGroup() (no layerGroup): cal getBounds() per ampliar els
     // límits d'arrossegament a actualitzaLimitsSegonsZoom().
     capaSeleccionada = L.featureGroup();
     p.ubicacions.forEach(u => {
-      L.circleMarker([u.lat, u.lon], {
+      const marcador = L.circleMarker([u.lat, u.lon], {
         pane: 'punts-pane',
         radius: 7,
         color: "#ffffff",
@@ -1970,6 +2223,10 @@
         // detecta que és la mateixa producció seleccionada i la desmarca.
         .on('click', () => seleccionaProduccio(p))
         .addTo(capaSeleccionada);
+      // Una producció repartida entre comarques té una ubicació (i per tant
+      // una comarca a evitar) diferent per a cada marcador, a diferència
+      // d'expandeixComarca() on totes en comparteixen una de sola.
+      marcador._comarcaNom = u.comarca;
     });
     capaSeleccionada.addTo(map);
     // Una producció amb diverses ubicacions pot tenir-les prou properes
@@ -1988,7 +2245,16 @@
       // al flyTo), deixant punts penjats i el mapa sense tornar mai a la
       // posició inicial en desseleccionar.
       const tooltipEl = marker.getTooltip() && marker.getTooltip().getElement();
-      if (tooltipEl) tooltipEl.style.setProperty('--label-color', colorSeleccio);
+      if (tooltipEl) {
+        tooltipEl.style.setProperty('--label-color', colorSeleccio);
+        // Permanent (mateix motiu que a expandeixComarca): segur reactivar
+        // els clics, no es tanca mai sol en passar-hi el ratolí per sobre.
+        tooltipEl.style.pointerEvents = 'auto';
+        tooltipEl.style.cursor = 'pointer';
+        // El cartellet ha de fer la mateixa funció que el punt en
+        // clicar-lo (desmarcar la producció, ja que és la seleccionada).
+        tooltipEl.onclick = e => { e.stopPropagation(); seleccionaProduccio(p); };
+      }
     });
     nomSeleccionat = p.nom;
 
