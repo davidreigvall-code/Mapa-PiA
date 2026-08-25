@@ -230,9 +230,9 @@
 
   /* Panell lateral esquerre: resum institucional per a projecció */
   #side-panel {
-    flex: 0 0 28%;
+    flex: 0 0 33%;
     min-width: 280px;
-    max-width: 420px;
+    max-width: 480px;
     background: var(--panel);
     color: var(--paper);
     display: flex;
@@ -477,7 +477,7 @@
   #custom-popup {
     position: fixed;
     z-index: 1000;
-    width: 300px;
+    width: 220px;
     display: none;
     background: #fffdf8;
     border-radius: 3px;
@@ -523,46 +523,46 @@
   .comarca-popup .cp-head {
     background: var(--panel);
     color: var(--paper);
-    padding: 12px 16px 10px;
+    padding: 9px 12px 7px;
     border-top: 3px solid var(--malva);
   }
 
   .comarca-popup .cp-head h2 {
     margin: 0 0 4px;
     font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 600;
     letter-spacing: 0.005em;
   }
 
   .comarca-popup .cp-stats {
     display: flex;
-    gap: 16px;
-    font-size: 11.5px;
+    gap: 10px;
+    font-size: 10.5px;
     color: #cbbfa9;
   }
 
   .comarca-popup .cp-stats b {
     color: var(--daurat);
-    font-size: 13px;
+    font-size: 12px;
     display: block;
     font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
     font-weight: 600;
   }
 
   .comarca-popup .cp-body {
-    padding: 10px 16px 14px;
+    padding: 7px 12px 10px;
   }
 
   .comarca-popup .cp-empty {
-    font-size: 12.5px;
+    font-size: 11.5px;
     color: #948a76;
     font-style: italic;
-    padding: 6px 0 2px;
+    padding: 5px 0 2px;
   }
 
   .comarca-popup .cp-item {
-    padding: 7px 0;
+    padding: 6px 0;
     border-bottom: 1px solid #efe6d6;
   }
 
@@ -571,7 +571,7 @@
   }
 
   .comarca-popup .cp-item .cp-nom {
-    font-size: 12.5px;
+    font-size: 11.5px;
     font-weight: 500;
     color: var(--ink);
     line-height: 1.25;
@@ -585,13 +585,13 @@
   }
 
   .comarca-popup .cp-item .cp-format {
-    font-size: 11px;
+    font-size: 10px;
     color: #7d7362;
     font-style: italic;
   }
 
   .comarca-popup .cp-item .cp-impacte {
-    font-size: 11.5px;
+    font-size: 10.5px;
     color: var(--accent-high);
     font-weight: 500;
     white-space: nowrap;
@@ -1039,6 +1039,7 @@
   const popupEl = document.createElement('div');
   popupEl.id = 'custom-popup';
   document.body.appendChild(popupEl);
+  const mapWrapEl = document.getElementById('map-wrap');
 
   // ---- Fixar el popup en fer clic (no només al passar el ratolí) ----
   // Al mòbil/tàctil no hi ha "hover", així que sense això el detall d'una
@@ -1053,6 +1054,9 @@
     popupEl.innerHTML = html;
     popupEl.classList.add('pinned');
     popupEl.style.display = 'block';
+    const posicio = decideixPosicioPopup(c.nom, layer);
+    costatPopupActual = posicio.h;
+    posicioVerticalActual = posicio.v;
     positionCustomPopup(clientX, clientY);
   }
 
@@ -1078,9 +1082,79 @@
     if (e.key === 'Escape') desfixaComarca();
   });
 
+  // Costat (esquerra/dreta del cursor) on s'obre el popup: es decideix una
+  // única vegada per comarca i es guarda en aquest mapa — totes les
+  // vegades següents que s'hi passi el ratolí per sobre reutilitzen el
+  // mateix valor, sense tornar a calcular-lo. Calcular-lo de nou cada cop
+  // (encara que fos a partir del centre de la comarca, no del cursor) feia
+  // que una comarca molt a prop del punt mig del mapa (com Urgell) pogués
+  // sortir a un costat o a l'altre segons petites diferències de mesura
+  // entre una vegada i la següent (per exemple si el popup canviava
+  // lleugerament l'amplada de la pàgina en mostrar-se) — es notava com si
+  // el popup anés saltant de banda en passar-hi el ratolí per sobre.
+  const MARGE_POPUP = 16;
+  const DESPLACAMENT_CURSOR = 20;
+  let costatPopupActual = 'dreta';
+  let posicioVerticalActual = 'baix';
+  const posicioPerComarca = new Map(); // nom -> { h: 'esquerra'|'dreta', v: 'dalt'|'baix' }
+
+  // Costat horitzontal (esquerra/dreta) i vertical (dalt/baix) on s'obre el
+  // popup: es decideixen una única vegada per comarca i es guarden en
+  // aquest mapa — totes les vegades següents que s'hi passi el ratolí per
+  // sobre reutilitzen el mateix valor, sense tornar a calcular-lo.
+  // Calcular-ho de nou cada cop (encara que fos a partir del centre de la
+  // comarca, no del cursor) feia que una comarca prop del punt mig del
+  // mapa, o prop de la vora superior/inferior (com Segrià o Noguera),
+  // pogués sortir a un costat/posició o a l'altra segons petites
+  // diferències de mesura entre una vegada i la següent — es notava com
+  // si el popup anés saltant de banda, o pujant i baixant, en passar-hi
+  // el ratolí per sobre.
+  //
+  // Horitzontal: es tria el costat que deixa MENYS mapa per tapar, segons
+  // el centre de la comarca. El mapa de Ponent i Acció ocupa #map-wrap, a
+  // la dreta del panell lateral; com més a prop estigui la comarca de la
+  // vora esquerra d'aquest requadre, menys mapa hi ha entre ella i el
+  // panell, així que convé obrir cap a l'esquerra (i a l'inrevés cap a la
+  // dreta, prop de la vora dreta de la finestra).
+  // Vertical: per defecte s'obre cap avall (com sempre ha fet); només puja
+  // si no hi cabria per sota.
+  // En ambdós casos es comprova aquí mateix si hi cap dins la finestra (i
+  // es gira si cal), a partir d'un únic punt (el centre de la comarca) en
+  // lloc de la posició canviant del cursor, perquè el resultat sigui
+  // sempre el mateix.
+  function decideixPosicioPopup(nomComarca, layer) {
+    if (posicioPerComarca.has(nomComarca)) return posicioPerComarca.get(nomComarca);
+    const centreMapa = map.latLngToContainerPoint(layer.getBounds().getCenter());
+    const mapContainerRect = map.getContainer().getBoundingClientRect();
+    const clientX = mapContainerRect.left + centreMapa.x;
+    const clientY = mapContainerRect.top + centreMapa.y;
+    const mapRect = mapWrapEl.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const width = popupEl.offsetWidth;
+    const height = popupEl.offsetHeight;
+
+    const espaiEsquerra = clientX - mapRect.left;
+    const espaiDreta = mapRect.right - clientX;
+    let h = espaiEsquerra < espaiDreta ? 'esquerra' : 'dreta';
+    const capDreta = clientX + DESPLACAMENT_CURSOR + width + MARGE_POPUP <= vw;
+    const capEsquerra = clientX - DESPLACAMENT_CURSOR - width - MARGE_POPUP >= 0;
+    if (h === 'dreta' && !capDreta && capEsquerra) h = 'esquerra';
+    else if (h === 'esquerra' && !capEsquerra && capDreta) h = 'dreta';
+
+    let v = 'baix';
+    const capBaix = clientY + DESPLACAMENT_CURSOR + height + MARGE_POPUP <= vh;
+    const capDalt = clientY - DESPLACAMENT_CURSOR - height - MARGE_POPUP >= 0;
+    if (!capBaix && capDalt) v = 'dalt';
+
+    const posicio = { h, v };
+    posicioPerComarca.set(nomComarca, posicio);
+    return posicio;
+  }
+
   function positionCustomPopup(clientX, clientY) {
-    const margin = 16;
-    const cursorOffset = 20;
+    const margin = MARGE_POPUP;
+    const cursorOffset = DESPLACAMENT_CURSOR;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
@@ -1090,12 +1164,12 @@
     const width = popupEl.offsetWidth;
     let height = popupEl.offsetHeight;
 
-    // Horitzontal: per defecte a la dreta del cursor; gira a l'esquerra
-    // si no hi cabria.
-    let left = clientX + cursorOffset;
-    if (left + width + margin > vw) {
-      left = clientX - cursorOffset - width;
-    }
+    // El costat i la posició vertical ja venen decidits (i comprovat que
+    // hi cabien) des de decideixPosicioPopup; aquí només se segueix la
+    // posició del cursor, sense tornar a girar de banda ni de dalt/baix.
+    let left = costatPopupActual === 'esquerra'
+      ? clientX - cursorOffset - width
+      : clientX + cursorOffset;
     left = Math.max(margin, Math.min(left, vw - width - margin));
 
     // Si la llista és tan llarga que no cap mai sencera en aquesta
@@ -1108,24 +1182,22 @@
       height = maxAvailable;
     }
 
-    // Vertical: per defecte alineat amb el cursor; si no hi cap per sota,
-    // puja; si tampoc hi cap per dalt, l'enganxem a la vora superior.
-    let top = clientY + cursorOffset;
-    if (top + height + margin > vh) {
-      top = clientY - cursorOffset - height;
-    }
-    if (top < margin) {
-      top = margin;
-    }
+    let top = posicioVerticalActual === 'dalt'
+      ? clientY - cursorOffset - height
+      : clientY + cursorOffset;
+    top = Math.max(margin, Math.min(top, vh - height - margin));
 
     popupEl.style.left = left + 'px';
     popupEl.style.top = top + 'px';
   }
 
-  function showCustomPopup(html, clientX, clientY) {
+  function showCustomPopup(nomComarca, layer, html, clientX, clientY) {
     popupEl.innerHTML = html;
     popupEl.classList.remove('pinned');
     popupEl.style.display = 'block';
+    const posicio = decideixPosicioPopup(nomComarca, layer);
+    costatPopupActual = posicio.h;
+    posicioVerticalActual = posicio.v;
     positionCustomPopup(clientX, clientY);
   }
 
@@ -1385,12 +1457,14 @@
           if (comarcaFixada && comarcaFixada.nom !== c.nom) return;
           this.setStyle(targetHoverStyle(c));
           this.bringToFront();
-          showCustomPopup(html, e.originalEvent.clientX, e.originalEvent.clientY);
+          showCustomPopup(c.nom, this, html, e.originalEvent.clientX, e.originalEvent.clientY);
         });
 
         layer.on('mousemove', function (e) {
           if (veureTotesActiu || nomSeleccionat) return;
           if (comarcaFixada) return;
+          // Segueix el ratolí (posició), però sense recalcular costatPopupActual:
+          // aquest ja es va decidir un sol cop a 'mouseover'.
           positionCustomPopup(e.originalEvent.clientX, e.originalEvent.clientY);
         });
 
@@ -1723,6 +1797,34 @@
     return p.ubicacions.length > 1 ? `${p.nom} (${u.comarca})` : p.nom;
   }
 
+  // Reparteix els cartellets al voltant del seu punt (dalt/baix/dreta/
+  // esquerra) perquè dos punts propers no acabin amb els cartellets
+  // superposats: per cada marcador, en píxels de pantalla a la vista
+  // ACTUAL del mapa, es descarten les direccions ja fetes servir per
+  // marcadors que hi ha a menys de 70px i es tria la primera que quedi
+  // lliure (dalt per defecte si cap ho està, o si el marcador va sol).
+  const DIRECCIONS_CARTELLET = [
+    { key: 'top', offset: [0, -8] },
+    { key: 'bottom', offset: [0, 8] },
+    { key: 'right', offset: [12, 0] },
+    { key: 'left', offset: [-12, 0] }
+  ];
+  function evitaSolapamentCartellets(marcadors) {
+    const posicionsUsades = [];
+    marcadors.forEach(marcador => {
+      const tooltip = marcador.getTooltip();
+      if (!tooltip) return;
+      const punt = map.latLngToContainerPoint(marcador.getLatLng());
+      const usades = new Set(
+        posicionsUsades.filter(p => punt.distanceTo(p.punt) < 70).map(p => p.direccio)
+      );
+      const opcio = DIRECCIONS_CARTELLET.find(d => !usades.has(d.key)) || DIRECCIONS_CARTELLET[0];
+      posicionsUsades.push({ punt, direccio: opcio.key });
+      tooltip.options.direction = opcio.key;
+      tooltip.options.offset = L.point(opcio.offset);
+    });
+  }
+
   // Capa amb tots els punts alhora (es mostra/amaga sencera amb el botó
   // "Veure totes les produccions al mapa"). No s'afegeix al mapa d'entrada.
   const puntsProduccions = L.layerGroup();
@@ -1870,6 +1972,10 @@
         .addTo(capaSeleccionada);
     });
     capaSeleccionada.addTo(map);
+    // Una producció amb diverses ubicacions pot tenir-les prou properes
+    // perquè els cartellets es tapin entre ells: es reparteixen abans
+    // d'obrir-los (dalt/baix/dreta/esquerra segons calgui).
+    evitaSolapamentCartellets(capaSeleccionada.getLayers());
     const colorSeleccio = colorFormat(p.format);
     capaSeleccionada.eachLayer(marker => {
       marker.openTooltip();
@@ -1889,10 +1995,11 @@
     filaSeleccionadaEl = prodsListEl.querySelector(`.sp-prod-row[data-nom="${CSS.escape(p.nom)}"]`);
     if (filaSeleccionadaEl) {
       filaSeleccionadaEl.classList.add('seleccionada');
-      // 'start' (no 'nearest'): en clicar un punt al mapa la fila pot
-      // trobar-se ben avall de la llista, i cal que quedi ben visible a
-      // dalt de tot en lloc de només "prou visible".
-      filaSeleccionadaEl.scrollIntoView({ block: 'start' });
+      // 'nearest': si la fila ja és visible (p. ex. clicant-la directament
+      // a la llista), no mou el scroll gens; només desplaça el mínim
+      // imprescindible quan cal (p. ex. en clicar un punt al mapa i la
+      // fila corresponent queda fora de vista).
+      filaSeleccionadaEl.scrollIntoView({ block: 'nearest' });
     }
 
     // Lleuger zoom cap a la ubicació (o ubicacions) seleccionada: mig punt
