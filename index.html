@@ -484,8 +484,32 @@
     pointer-events: none;
   }
 
-  .punt-produccio-label::before {
+  /* La "punxa" del cartellet ha d'agafar sempre el color del format
+     (--label-color), no el blanc per defecte de Leaflet: com que
+     evitaSolapamentCartellets() reparteix els cartellets en qualsevol de
+     les 4 direccions per no xocar-hi entre ells, calen les 4 (Leaflet
+     només pinta un dels 4 costats del triangle segons la direcció). */
+  .punt-produccio-label.leaflet-tooltip-top::before {
     border-top-color: var(--label-color, var(--malva)) !important;
+  }
+  .punt-produccio-label.leaflet-tooltip-bottom::before {
+    border-bottom-color: var(--label-color, var(--malva)) !important;
+  }
+  .punt-produccio-label.leaflet-tooltip-left::before {
+    border-left-color: var(--label-color, var(--malva)) !important;
+  }
+  .punt-produccio-label.leaflet-tooltip-right::before {
+    border-right-color: var(--label-color, var(--malva)) !important;
+  }
+  /* Les variants top/bottom amb desplaçament horitzontal (per no xocar amb
+     un altre cartellet, vegeu DIRECCIONS_CARTELLET) mouen tota la capsa
+     cap a un costat, però Leaflet sempre centra la punxa respecte la
+     capsa: sense compensar-ho, la punxa deixa d'apuntar cap al punt real.
+     --punxa-x (fixada en obrir el tooltip, vegeu JS) desplaça la punxa en
+     sentit contrari per compensar-ho. */
+  .punt-produccio-label.leaflet-tooltip-top::before,
+  .punt-produccio-label.leaflet-tooltip-bottom::before {
+    left: calc(50% + var(--punxa-x, 0px));
   }
 
   /* Popup propi (no natiu de Leaflet), fixat respecte la finestra: es
@@ -1040,6 +1064,15 @@
   // la plega; clicar-ne una altra la substitueix.
   let comarcaExpandida = null; // nom
   let capaPuntsComarca = null;
+  // Capa (polígon) de cada comarca, indexada pel nom: cal per poder
+  // desressaltar la comarca anterior en expandeixComarca() quan se'n
+  // clica una altra directament, sense passar per plegaComarca().
+  const capaPerComarca = {};
+  // Anell de resseguit dibuixat per sobre del contorn exterior vermell
+  // (vegeu el comentari de 'ressalt-pane'), per a la comarca actualment
+  // ressaltada (hover o expandida). Només n'hi ha un alhora.
+  let capaRessalt = null;
+  let capaRessaltNom = null;
   // Mentre el mapa torna cap a la posició inicial en plegar una comarca
   // (plegaComarca), es manté a true fins que el flyTo hi arriba de debò
   // (moveend): el hover d'altres comarques queda desactivat durant aquest
@@ -1058,6 +1091,47 @@
   // (el listener 'dragend' es registra més avall, a prop de 'zoomend')
   let acabaDArrossegar = false;
 
+  // Dibuixa l'anell de resseguit (vegeu 'ressalt-pane') seguint la
+  // geometria exacta de la comarca donada, per sobre del contorn
+  // exterior vermell: sense això, a les comarques que toquen la vora de
+  // la zona el vermell tapava part del seu propi resseguit.
+  function ressaltaComarca(nom, layer) {
+    if (capaRessalt) map.removeLayer(capaRessalt);
+    capaRessalt = L.polygon(layer.getLatLngs(), {
+      pane: 'ressalt-pane',
+      color: '#14120f',
+      weight: 2,
+      fill: false,
+      interactive: false
+    }).addTo(map);
+    capaRessaltNom = nom;
+  }
+
+  // Treu l'anell de resseguit, però només si encara és el d'aquesta
+  // comarca (evita esborrar el d'una altra si el 'mouseover' ja l'ha
+  // substituït abans que arribés aquest 'mouseout').
+  function treuRessalt(nom) {
+    if (capaRessalt && capaRessaltNom === nom) {
+      map.removeLayer(capaRessalt);
+      capaRessalt = null;
+      capaRessaltNom = null;
+    }
+  }
+
+  // Torna la comarca (per nom) al seu estil normal, sense esperar el
+  // 'mouseout' natural: cal cridar-ho explícitament a tots els llocs que
+  // deixen de considerar-la "expandida" (plegaComarca, el botó "veure
+  // totes", seleccionar una producció...), ja que el 'mouseout' només
+  // reposa l'estil quan comarcaExpandida ja no hi apunta (vegeu el
+  // comentari del 'mouseout' del polígon) — si el canvi ve d'un altre
+  // lloc que no sigui passar-hi el ratolí per sobre, ningú més ho fa.
+  function desressaltaComarca(nom) {
+    const capa = capaPerComarca[nom];
+    const dades = comarquesByName[nom];
+    if (capa && dades) capa.setStyle(targetStyle(dades));
+    treuRessalt(nom);
+  }
+
   function plegaComarca() {
     if (!capaPuntsComarca) return;
     // Atura qualsevol animació flyTo/flyToBounds encara en curs abans de
@@ -1072,6 +1146,7 @@
     map.stop();
     map.removeLayer(capaPuntsComarca);
     capaPuntsComarca = null;
+    desressaltaComarca(comarcaExpandida);
     comarcaExpandida = null;
     plegantComarca = true;
     map.once('moveend', () => { plegantComarca = false; });
@@ -1089,7 +1164,17 @@
     }
     map.stop();
     if (capaPuntsComarca) map.removeLayer(capaPuntsComarca);
+    // Si hi havia una altra comarca expandida, es desressegueix (el seu
+    // 'mouseout' no ho fa mai sol: mentre comarcaExpandida hi apuntava,
+    // es considerava expressament ressaltada, vegeu el comentari del
+    // 'mouseout' més amunt). La nova es resseguix de seguida, sense
+    // esperar el 'mouseover': si l'usuari ha clicat venint d'una altra
+    // comarca ja expandida, el 'mouseover' d'aquesta no arriba a activar
+    // el ressalt perquè encara hi havia l'anterior com a expandida.
+    if (comarcaExpandida && comarcaExpandida !== c.nom) desressaltaComarca(comarcaExpandida);
     comarcaExpandida = c.nom;
+    layer.setStyle(targetHoverStyle(c));
+    ressaltaComarca(c.nom, layer);
     // El popup de hover d'aquesta mateixa comarca pot seguir obert just
     // en clicar (el ratolí encara hi és a sobre, així que no arriba mai un
     // 'mouseout' que el tanqui): es tanca explícitament perquè no quedi
@@ -1118,8 +1203,12 @@
             className: 'punt-produccio-label'
           })
           .on('tooltipopen', function () {
-            const tooltipEl = this.getTooltip().getElement();
+            const tooltip = this.getTooltip();
+            const tooltipEl = tooltip.getElement();
             tooltipEl.style.setProperty('--label-color', colorPunt);
+            // Compensa la punxa quan evitaSolapamentCartellets() ha
+            // desplaçat aquest cartellet horitzontalment (vegeu la CSS).
+            tooltipEl.style.setProperty('--punxa-x', -L.point(tooltip.options.offset).x + 'px');
             // Aquest cartellet és permanent (no es tanca mai en treure el
             // ratolí de sobre), així que reactivar-hi els clics és segur:
             // no hi ha risc que es "robi" el hover al punt i es tanqui sol
@@ -1138,6 +1227,7 @@
         // aquí sempre és la mateixa, ja que tots els punts d'aquesta capa
         // pertanyen a la comarca expandida.
         marcador._comarcaNom = c.nom;
+        marcador._direccioForçada = direccioForçada(p, u);
         marcadors.push(marcador);
       });
     });
@@ -1155,7 +1245,22 @@
       if (comarcaExpandida !== c.nom) return;
       marcadors.forEach(marcador => {
         const tooltip = marcador.getTooltip();
-        if (tooltip) tooltip.options.permanent = true;
+        if (!tooltip) return;
+        // NO n'hi ha prou amb mutar tooltip.options.permanent: Leaflet
+        // només decideix si enganxa els listeners mouseover/mouseout/click
+        // al marcador UN COP, en fer-hi bindTooltip() (a dalt, sense
+        // 'permanent' perquè encara no ho havia de ser). Un cop enganxats,
+        // mutar 'permanent' després no els treu, així que el mouseout
+        // seguia tancant el cartellet en passar-hi el ratolí per sobre tot
+        // i marcar-lo com a permanent. Cal refer el bindTooltip ja amb
+        // permanent:true perquè Leaflet no hi enganxi mai aquests listeners.
+        marcador.unbindTooltip();
+        marcador.bindTooltip(tooltip.getContent(), {
+          direction: 'top',
+          offset: [0, -6],
+          className: 'punt-produccio-label',
+          permanent: true
+        });
       });
       evitaSolapamentCartellets(marcadors);
       marcadors.forEach(marcador => marcador.openTooltip());
@@ -1550,6 +1655,7 @@
       const labelPos = labelLatLngFor(feature);
 
       if (c) {
+        capaPerComarca[c.nom] = layer;
         L.tooltip({
           permanent: true,
           direction: 'center',
@@ -1575,6 +1681,7 @@
           if (comarcaExpandida || plegantComarca) return;
           this.setStyle(targetHoverStyle(c));
           this.bringToFront();
+          ressaltaComarca(c.nom, this);
           showCustomPopup(c.nom, this, html, e.originalEvent.clientX, e.originalEvent.clientY);
         });
 
@@ -1589,7 +1696,10 @@
         layer.on('mouseout', function () {
           // Si la comarca està expandida, es manté ressaltada; el popup de
           // hover sí que es tanca sempre (només és una previsualització).
-          if (comarcaExpandida !== c.nom) this.setStyle(targetStyle(c));
+          if (comarcaExpandida !== c.nom) {
+            this.setStyle(targetStyle(c));
+            treuRessalt(c.nom);
+          }
           hideCustomPopup();
         });
 
@@ -1828,6 +1938,18 @@
   map.createPane('contorn-pane');
   map.getPane('contorn-pane').style.zIndex = 420;
 
+  // Pane pel resseguit (contorn) de la comarca seleccionada/hover, per
+  // SOBRE del contorn exterior vermell (420): sense això, allà on el
+  // contorn d'una comarca coincideix amb el contorn exterior de tota la
+  // zona (és a dir, a les comarques que toquen la vora, no les que
+  // només toquen altres comarques de la zona), el vermell tapava el
+  // resseguit propi de la comarca — es veia complet només a les
+  // comarques totalment envoltades per les altres (p. ex. Pla d'Urgell),
+  // i tallat/incomplet a la resta, com si "ressegunssin" més fort unes
+  // que altres.
+  map.createPane('ressalt-pane');
+  map.getPane('ressalt-pane').style.zIndex = 430;
+
   let capesContornObjectiu = [];
   function dibuixaContornObjectiu() {
     capesContornObjectiu.forEach(capa => map.removeLayer(capa));
@@ -1947,15 +2069,37 @@
     { key: 'top', offset: [16, -6] },
     { key: 'top', offset: [-16, -6] },
     { key: 'bottom', offset: [16, 6] },
-    { key: 'bottom', offset: [-16, 6] }
+    { key: 'bottom', offset: [-16, 6] },
+    // Nivells apilats a sobre/sota, sense desplaçament horitzontal: calen
+    // en clústers de punts pràcticament superposats (p. ex. Agramunt, amb
+    // 4 produccions gairebé al mateix lloc), on els punts són massa a
+    // prop entre ells perquè un simple desplaçament lateral separi
+    // cartellets tan amples com els seus noms.
+    { key: 'top', offset: [0, -24] },
+    { key: 'bottom', offset: [0, 24] },
+    { key: 'top', offset: [0, -42] },
+    { key: 'bottom', offset: [0, 42] }
   ];
+
+  // Punts concrets on l'anti-solapament automàtic no dona el resultat
+  // correcte (p. ex. xoca amb l'etiqueta d'una comarca veïna, que no es té
+  // en compte com a obstacle) i cal forçar-los la direcció a mà. Clau:
+  // "nom producció|comarca" (una producció amb diverses ubicacions pot
+  // necessitar forçar-ne només una).
+  const DIRECCIO_FORÇADA = {
+    'SHADES OF PARADISE|Segarra': 'bottom',
+    'VIDEOCLIP ANTIGA ACADEMIA|Urgell': 'left'
+  };
+  function direccioForçada(p, u) {
+    return DIRECCIO_FORÇADA[`${p.nom}|${u.comarca}`] || null;
+  }
 
   // Mides aproximades d'un cartellet (CSS .punt-produccio-label: font-size
   // 9px, padding 2px 5px): amplada mitjana de caràcter i alçada de línia
   // estimades, prou properes a la real per detectar solapaments sense
   // haver d'obrir el tooltip abans d'hora només per mesurar-lo.
   const AMPLADA_CARACTER_CARTELLET = 5.4;
-  const ALCADA_CARTELLET = 15;
+  const ALCADA_CARTELLET = 18;
   function rectangleCartell(cx, cy, direccioKey, text) {
     const amplada = text.length * AMPLADA_CARACTER_CARTELLET + 12;
     let left, top;
@@ -1997,8 +2141,15 @@
       const punt = map.latLngToContainerPoint(marcador.getLatLng());
       const cx = mapRect.left + punt.x, cy = mapRect.top + punt.y;
       const obstacle = rectangleEtiquetaComarca(marcador._comarcaNom);
+      // marcador._direccioForçada (vegeu DIRECCIO_FORÇADA): si hi és,
+      // només es proven les variants d'aquella direcció (les diagonals hi
+      // continuen ajudant a evitar altres cartellets), mai les altres 3
+      // direccions cardinals.
+      const candidates = marcador._direccioForçada
+        ? DIRECCIONS_CARTELLET.filter(d => d.key === marcador._direccioForçada)
+        : DIRECCIONS_CARTELLET;
       let millorOpcio = null, millorRectangle = null, menysXocs = Infinity;
-      DIRECCIONS_CARTELLET.forEach(d => {
+      candidates.forEach(d => {
         const rect = rectangleCartell(cx + d.offset[0], cy + d.offset[1], d.key, text);
         let xocs = rectanglesColocats.filter(r => rectanglesXoquen(rect, r)).length;
         if (obstacle && rectanglesXoquen(rect, obstacle)) xocs += 1;
@@ -2020,6 +2171,9 @@
   produccionsOrdenades.forEach(p => {
     const colorPunt = colorFormat(p.format);
     p.ubicacions.forEach(u => {
+      const direccioPuntVeureTotes = DIRECCIONS_CARTELLET.find(
+        d => d.key === (direccioForçada(p, u) || 'top')
+      );
       const marcador = L.circleMarker([u.lat, u.lon], {
         pane: 'punts-pane',
         radius: 5,
@@ -2029,8 +2183,11 @@
         fillOpacity: 1
       })
         .bindTooltip(etiquetaUbicacio(p, u), {
-          direction: 'top',
-          offset: [0, -6],
+          // Aquesta capa no passa pel repartiment automàtic
+          // (evitaSolapamentCartellets): direcció fixa 'top', excepte els
+          // punts de DIRECCIO_FORÇADA.
+          direction: direccioPuntVeureTotes.key,
+          offset: direccioPuntVeureTotes.offset,
           className: 'punt-produccio-label'
         })
         // Tooltip NO permanent: es crea/destrueix cada cop que s'obre, així
@@ -2044,33 +2201,33 @@
           tooltipEl.style.pointerEvents = 'auto';
           tooltipEl.style.cursor = 'pointer';
           tooltipEl.onclick = e => { e.stopPropagation(); seleccionaProduccio(p, { nomesLlista: true }); };
-          // Amb el cartellet clicable, si el ratolí passa del punt cap al
-          // seu propi cartellet (que sovint el toca o el tapa una mica,
-          // sobretot amb noms llargs o punts molt junts), aquest ara
-          // intercepta el mouseout del punt: sense tractar-ho, Leaflet
-          // tancava el tooltip a l'instant (no permanent) en detectar-lo, i
-          // semblava que el punt desapareixia en passar-hi per sobre. Es
-          // manté obert mentre el ratolí estigui dins del punt O del seu
-          // cartellet, i només es tanca en sortir de tots dos alhora.
-          tooltipEl.onmouseleave = e => {
-            const elMarcador = marcador.getElement();
-            if (elMarcador && e.relatedTarget && elMarcador.contains(e.relatedTarget)) return;
-            marcador.closeTooltip();
-          };
+          // Entre el punt i el seu cartellet (offset [0,-6] + la fletxa
+          // pròpia del tooltip de Leaflet) hi ha uns quants px de buit real:
+          // en moure-hi el ratolí de pressa, el 'mouseout' del punt arriba
+          // amb relatedTarget que no és ni el punt ni el cartellet (és el
+          // fons del mapa), de manera que comprovar només el relatedTarget
+          // no basta i el cartellet es tanca abans que el ratolí hi arribi.
+          // cancelaTancament()/programaTancament() (definits més avall)
+          // donen un marge de temps que cobreix aquest buit.
+          tooltipEl.onmouseenter = cancelaTancament;
+          tooltipEl.onmouseleave = programaTancament;
         })
         .on('click', () => seleccionaProduccio(p, { nomesLlista: true }))
         .addTo(puntsProduccions);
-      // Substitueix el tancament automàtic de Leaflet en mouseout (que no
-      // sap res del cartellet) pel propi: no tanca si el ratolí ha anat cap
-      // al cartellet (el gestiona tooltipEl.onmouseleave, a dalt).
+      let tancamentPendent = null;
+      function cancelaTancament() {
+        if (tancamentPendent) { clearTimeout(tancamentPendent); tancamentPendent = null; }
+      }
+      function programaTancament() {
+        cancelaTancament();
+        tancamentPendent = setTimeout(() => { marcador.closeTooltip(); tancamentPendent = null; }, 200);
+      }
+      // Substitueix el tancament automàtic de Leaflet en mouseout (immediat)
+      // pel propi: dona marge perquè el ratolí arribi al cartellet abans de
+      // tancar-lo de debò (vegeu el comentari a 'tooltipopen').
       marcador.off('mouseout');
-      marcador.on('mouseout', function (e) {
-        const tooltip = marcador.getTooltip();
-        const tooltipEl = tooltip && tooltip.getElement();
-        const relacionat = e.originalEvent && e.originalEvent.relatedTarget;
-        if (tooltipEl && relacionat && tooltipEl.contains(relacionat)) return;
-        marcador.closeTooltip();
-      });
+      marcador.on('mouseout', programaTancament);
+      marcador.on('mouseover', cancelaTancament);
     });
   });
 
@@ -2083,6 +2240,7 @@
     if (capaPuntsComarca) {
       map.removeLayer(capaPuntsComarca);
       capaPuntsComarca = null;
+      desressaltaComarca(comarcaExpandida);
       comarcaExpandida = null;
     }
     desfixaProduccio();
@@ -2206,6 +2364,7 @@
     if (capaPuntsComarca) {
       map.removeLayer(capaPuntsComarca);
       capaPuntsComarca = null;
+      desressaltaComarca(comarcaExpandida);
       comarcaExpandida = null;
     }
 
@@ -2237,6 +2396,7 @@
       // una comarca a evitar) diferent per a cada marcador, a diferència
       // d'expandeixComarca() on totes en comparteixen una de sola.
       marcador._comarcaNom = u.comarca;
+      marcador._direccioForçada = direccioForçada(p, u);
     });
     capaSeleccionada.addTo(map);
     // Una producció amb diverses ubicacions pot tenir-les prou properes
@@ -2254,9 +2414,13 @@
       // resta de la funció (nomSeleccionat mai quedava fixat ni s'arribava
       // al flyTo), deixant punts penjats i el mapa sense tornar mai a la
       // posició inicial en desseleccionar.
-      const tooltipEl = marker.getTooltip() && marker.getTooltip().getElement();
+      const tooltip = marker.getTooltip();
+      const tooltipEl = tooltip && tooltip.getElement();
       if (tooltipEl) {
         tooltipEl.style.setProperty('--label-color', colorSeleccio);
+        // Compensa la punxa quan evitaSolapamentCartellets() ha desplaçat
+        // aquest cartellet horitzontalment (vegeu la CSS).
+        tooltipEl.style.setProperty('--punxa-x', -L.point(tooltip.options.offset).x + 'px');
         // Permanent (mateix motiu que a expandeixComarca): segur reactivar
         // els clics, no es tanca mai sol en passar-hi el ratolí per sobre.
         tooltipEl.style.pointerEvents = 'auto';
