@@ -633,36 +633,6 @@
     display: none;
   }
 
-  /* Llegenda dels colors de format dels punts de rodatge */
-  #format-legend {
-    position: absolute;
-    bottom: 14px;
-    left: 14px;
-    z-index: 500;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 10px;
-    color: #7d7362;
-    background: rgba(250,248,244,0.88);
-    padding: 6px 10px;
-    border-radius: 3px;
-  }
-
-  #format-legend .fl-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    white-space: nowrap;
-  }
-
-  #format-legend .fl-dot {
-    flex: none;
-    width: 7px;
-    height: 7px;
-    border-radius: 1px;
-  }
 </style>
 </head>
 <body>
@@ -713,7 +683,6 @@
     <div id="map"></div>
     <div id="tooltip-hint">Passa el ratolí o toca una comarca acolorida per veure el detall de produccions</div>
     <div id="source-note"></div>
-    <div id="format-legend"></div>
   </div>
 </div>
 
@@ -796,6 +765,7 @@
     const colImpacte = capcaleres.findIndex(h => h.startsWith("impacte"));
     const colLatitud = capcaleres.findIndex(h => h.startsWith("lat"));
     const colLongitud = capcaleres.findIndex(h => h.startsWith("long"));
+    const colMunicipi = capcaleres.findIndex(h => h.startsWith("municipi"));
 
     // Latitud/Longitud del rodatge (columnes opcionals): si no hi són, o
     // estan buides per a una fila, la producció simplement no té punt al
@@ -815,7 +785,8 @@
         format: (fila[colFormat] || "").trim(),
         impacte: parseImpacte(fila[colImpacte]),
         lat: colLatitud !== -1 ? parseCoordenada(fila[colLatitud]) : NaN,
-        lon: colLongitud !== -1 ? parseCoordenada(fila[colLongitud]) : NaN
+        lon: colLongitud !== -1 ? parseCoordenada(fila[colLongitud]) : NaN,
+        municipi: colMunicipi !== -1 ? (fila[colMunicipi] || "").trim() : ""
       };
       (produccionsPerComarca[nomComarca] = produccionsPerComarca[nomComarca] || []).push(produccio);
     });
@@ -897,7 +868,7 @@
       // tingui coordenades vàlides (no només la primera), perquè en
       // seleccionar-la des de la llista apareguin totes al mapa alhora.
       if (isFinite(p.lat) && isFinite(p.lon)) {
-        entrada.ubicacions.push({ comarca: c.nom, lat: p.lat, lon: p.lon });
+        entrada.ubicacions.push({ comarca: c.nom, municipi: p.municipi, lat: p.lat, lon: p.lon });
       }
     });
   });
@@ -921,28 +892,11 @@
     { keyword: "reportatge", color: "#a9cea4", label: "Reportatge" }
   ];
   const FORMAT_COLOR_DEFAULT = "#c4bbae";
-  const FORMAT_LABEL_DEFAULT = "Altres";
   function colorFormat(format) {
     const f = (format || "").toLowerCase();
     const match = FORMAT_COLORS.find(fc => f.includes(fc.keyword));
     return match ? match.color : FORMAT_COLOR_DEFAULT;
   }
-
-  // Llegenda del mapa: només hi surten les categories que realment tenen
-  // alguna producció avui (evita mostrar-hi colors que no s'usen).
-  const formatsUsats = new Set(produccionsOrdenades.map(p => {
-    const f = (p.format || "").toLowerCase();
-    const match = FORMAT_COLORS.find(fc => f.includes(fc.keyword));
-    return match ? match.label : FORMAT_LABEL_DEFAULT;
-  }));
-  const legendItems = FORMAT_COLORS.filter(fc => formatsUsats.has(fc.label));
-  if (formatsUsats.has(FORMAT_LABEL_DEFAULT)) {
-    legendItems.push({ color: FORMAT_COLOR_DEFAULT, label: FORMAT_LABEL_DEFAULT });
-  }
-  const formatLegendEl = document.getElementById('format-legend');
-  formatLegendEl.innerHTML = legendItems.map(fc => `
-    <span class="fl-item"><span class="fl-dot" style="background:${fc.color}"></span>${fc.label}</span>
-  `).join("");
 
   // files.dataset.nom permet retrobar la fila d'una producció des del
   // mapa (en clicar un punt) per marcar-la com a seleccionada, sense
@@ -1662,6 +1616,17 @@
   // aquests punts, si no surt col·lapsat a un origen degenerat. Com que
   // refitMap() també s'executa en redimensionar/pantalla completa, es
   // treuen les capes anteriors abans de redibuixar per no acumular-les.
+  // Pane propi per al contorn, per sobre del pane per defecte de les
+  // comarques (overlayPane, z-index 400): en passar el ratolí per sobre
+  // d'una comarca, el seu polígon fa bringToFront() dins el SEU pane —i
+  // com que el mouseout no la torna mai enrere, es queda per sempre per
+  // sobre del contorn si comparteixen pane, tapant-ne trossos allà on
+  // coincideixen (es veu com si el contorn s'hagués fet més petit). Amb
+  // un pane propi de z-index més alt, el contorn sempre queda per sobre,
+  // independentment d'aquest reordenament. Mateix motiu que 'punts-pane'.
+  map.createPane('contorn-pane');
+  map.getPane('contorn-pane').style.zIndex = 420;
+
   let capesContornObjectiu = [];
   function dibuixaContornObjectiu() {
     capesContornObjectiu.forEach(capa => map.removeLayer(capa));
@@ -1670,8 +1635,9 @@
     // on es toquen tres comarques, no contorn real.
     contornExteriorObjectiu(comarquesObjectiu).filter(anell => anell.length > 15).forEach(anell => {
       const capa = L.polygon(anell.map(([lon, lat]) => [lat, lon]), {
+        pane: 'contorn-pane',
         color: "#c0392b",
-        weight: 4,
+        weight: 3,
         fill: false,
         interactive: false
       }).addTo(map);
@@ -1748,10 +1714,20 @@
   map.createPane('punts-pane');
   map.getPane('punts-pane').style.zIndex = 450;
 
+  // Text del rètol d'un punt: "nom de la producció - municipi" quan el
+  // full té el municipi de rodatge omplert per a aquesta ubicació; si no
+  // (columna encara buida o no afegida), es manté el format anterior amb
+  // la comarca com a referència.
+  function etiquetaUbicacio(p, u) {
+    if (u.municipi) return `${p.nom} - ${u.municipi}`;
+    return p.ubicacions.length > 1 ? `${p.nom} (${u.comarca})` : p.nom;
+  }
+
   // Capa amb tots els punts alhora (es mostra/amaga sencera amb el botó
   // "Veure totes les produccions al mapa"). No s'afegeix al mapa d'entrada.
   const puntsProduccions = L.layerGroup();
   produccionsOrdenades.forEach(p => {
+    const colorPunt = colorFormat(p.format);
     p.ubicacions.forEach(u => {
       L.circleMarker([u.lat, u.lon], {
         pane: 'punts-pane',
@@ -1761,7 +1737,17 @@
         fillColor: "#14120f",
         fillOpacity: 1
       })
-        .bindTooltip(p.ubicacions.length > 1 ? `${p.nom} (${u.comarca})` : p.nom, { direction: 'top', offset: [0, -6] })
+        .bindTooltip(etiquetaUbicacio(p, u), {
+          direction: 'top',
+          offset: [0, -6],
+          className: 'punt-produccio-label'
+        })
+        // Tooltip NO permanent: es crea/destrueix cada cop que s'obre, així
+        // que --label-color (llegida per .punt-produccio-label) s'ha de
+        // fixar en cada obertura, no un sol cop en crear el marcador.
+        .on('tooltipopen', function () {
+          this.getTooltip().getElement().style.setProperty('--label-color', colorPunt);
+        })
         .on('click', () => seleccionaProduccio(p))
         .addTo(puntsProduccions);
     });
@@ -1870,7 +1856,7 @@
         fillColor: "#14120f",
         fillOpacity: 1
       })
-        .bindTooltip(p.ubicacions.length > 1 ? `${p.nom} (${u.comarca})` : p.nom, {
+        .bindTooltip(etiquetaUbicacio(p, u), {
           direction: 'top',
           offset: [0, -8],
           permanent: true,
