@@ -1819,14 +1819,22 @@
   // quedat l'última selecció.
   function desfixaProduccio() {
     // Atura qualsevol animació flyTo/flyToBounds encara en curs abans de
-    // tocar maxBounds o llançar-ne una de nova: si es deixa en marxa,
-    // setMaxBounds() (cridat per actualitzaLimitsSegonsZoom() tot seguit)
-    // reajusta la vista MIG animació, i aquesta correcció xoca amb els
-    // fotogrames pendents del flyTo anterior — és el que feia que els
-    // punts "es buguegessin" en clicar/desclicar produccions ràpidament.
+    // llançar-ne una de nova: si es deixa en marxa, la correcció de
+    // maxBounds xoca amb els fotogrames pendents del flyTo anterior — és
+    // el que feia que els punts "es buguegessin" en clicar/desclicar
+    // produccions ràpidament.
     map.stop();
     netejaSeleccioProduccio();
-    actualitzaLimitsSegonsZoom();
+    // NO es crida actualitzaLimitsSegonsZoom() aquí (com sí que es feia
+    // abans): fer-ho ABANS del flyTo cridava setMaxBounds() amb la vista
+    // encara al zoom apropat de la selecció, i per a ubicacions a prop de
+    // la vora de les 16 comarques carregades això sobresortia dels nous
+    // límits — Leaflet corregeix els maxBounds a l'instant (sense animar),
+    // fent que el mapa "saltés" de cop a una posició equivocada abans que
+    // ni tan sols comencés el flyTo cap al centre. En comptes d'això, es
+    // deixa que ho faci el listener de 'zoomend' (ja registrat més amunt)
+    // un cop el flyTo hagi arribat de debò al zoom mínim final — exactament
+    // com ja fa seleccionaProduccio() per al seu propi flyTo.
     map.flyTo(targetBounds.getCenter(), zoomBase, { duration: 1, easeLinearity: 0.2 });
   }
 
@@ -1881,8 +1889,14 @@
       marker.openTooltip();
       // El cartellet és un tooltip de Leaflet (no un element propi): cal
       // fixar-hi el color del format un cop obert, via la variable CSS
-      // --label-color que fa servir .punt-produccio-label.
-      marker.getTooltip().getElement().style.setProperty('--label-color', colorSeleccio);
+      // --label-color que fa servir .punt-produccio-label. getElement()
+      // pot retornar undefined si el tooltip encara no s'ha acabat de
+      // muntar: sense aquesta comprovació, l'excepció interrompia la
+      // resta de la funció (nomSeleccionat mai quedava fixat ni s'arribava
+      // al flyTo), deixant punts penjats i el mapa sense tornar mai a la
+      // posició inicial en desseleccionar.
+      const tooltipEl = marker.getTooltip() && marker.getTooltip().getElement();
+      if (tooltipEl) tooltipEl.style.setProperty('--label-color', colorSeleccio);
     });
     nomSeleccionat = p.nom;
 
