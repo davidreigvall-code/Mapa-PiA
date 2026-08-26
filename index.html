@@ -93,12 +93,15 @@
      fosca) del Pantone 7591 C, perquè l'accent principal de l'app tingui
      més força visual que el to pla original. --color-fosc-text és una
      variant encara més fosca de --color-fosc feta a mà, només per a text
-     sobre fons clar. */
+     sobre fons clar; --color-fosc-clar és la inversa (més clara), per a
+     text en accent sobre fons foscos (--ink), on --color-fosc pla no dona
+     prou contrast. */
   :root{
     --color-clar: #EABE86;
     --color-mitja: #D9C0A9;
     --color-fosc: #B64720;
     --color-fosc-text: #7F3216;
+    --color-fosc-clar: #D39179;
     --ink: #14120f;
     --paper: #faf8f4;
     --panel: #F2EDE6;
@@ -164,7 +167,11 @@
      servir #side-panel per al seu propi text), perquè quedi a l'alçada
      del text de sota. Penja directament de <header> (no de .title-block)
      pel mateix motiu que la ratlla: "left" no ha d'arrossegar el padding
-     del capçalera, per això aquí es fixa explícitament a 28px. */
+     del capçalera, per això aquí es fixa explícitament a 28px. S'usa la
+     variant "transparent" (no la "negatiu", que porta un fons negre
+     opac) i es converteix a blanc pla per filtre CSS: brightness(0)
+     converteix qualsevol color opac a negre (conservant la transparència),
+     invert(1) el passa a blanc. */
   header .brand-logo {
     position: absolute;
     left: 28px;
@@ -173,6 +180,7 @@
     height: clamp(82.5px, 5.7292vw, 154px);
     width: auto;
     display: block;
+    filter: brightness(0) invert(1);
   }
 
   header .title-text {
@@ -199,9 +207,9 @@
   header h1 {
     margin: 0;
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
-    font-size: clamp(15px, 1.0417vw, 28px);
+    font-size: clamp(18.75px, 1.3021vw, 35px);
     font-weight: 500;
-    letter-spacing: 0.13em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--panel);
   }
@@ -237,9 +245,9 @@
 
   /* Panell lateral esquerre: resum institucional per a projecció */
   #side-panel {
-    flex: 0 0 33%;
-    min-width: 280px;
-    max-width: 480px;
+    flex: 0 0 30%;
+    min-width: 260px;
+    max-width: 420px;
     background: var(--panel);
     color: var(--ink);
     display: flex;
@@ -530,7 +538,7 @@
   }
 
   .comarca-popup .cp-stats b {
-    color: var(--color-fosc);
+    color: var(--color-fosc-clar);
     font-size: 12px;
     display: block;
     font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
