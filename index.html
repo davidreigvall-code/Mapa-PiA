@@ -245,7 +245,7 @@
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 26px;
+    gap: 24px;
     padding: 32px 28px;
     overflow-y: auto;
   }
@@ -280,10 +280,15 @@
     margin-top: 3px;
   }
 
-  .sp-divider {
-    border: none;
-    border-top: 1px solid #3a332a;
-    margin: 0;
+  /* Targeta de fons per a la llista: la separa visualment de les xifres
+     globals de sobre com una superfície pròpia, en lloc de compartir el
+     mateix pla que la resta del panell. */
+  .sp-prods-card {
+    background: #FBF8F3;
+    border-radius: 10px;
+    margin: 0 -16px;
+    padding: 4px 18px;
+    box-shadow: 0 1px 3px rgba(20,18,15,0.1);
   }
 
   .sp-prods-list {
@@ -292,8 +297,8 @@
   }
 
   .sp-prod-row {
-    padding: 9px 0;
-    border-bottom: 1px solid #3a332a;
+    padding: 11px 0;
+    border-bottom: 1px solid #ddd2c0;
     cursor: pointer;
   }
 
@@ -303,14 +308,15 @@
 
   /* Producció seleccionada (clicada des de la llista o des d'un punt del
      mapa): coincideix visualment amb el punt destacat que apareix al mapa.
-     Marge negatiu perquè el fons ocupi tota l'amplada del panell (fins als
-     28px de padding), i una ratlla a l'esquerra com a indicador
-     addicional, ben visible encara que el fons de color sigui subtil. */
+     Marge negatiu perquè el fons ocupi tota l'amplada de la targeta (fins
+     als 18px de padding de .sp-prods-card), i una ratlla a l'esquerra com
+     a indicador addicional, ben visible encara que el fons de color sigui
+     subtil. */
   .sp-prod-row.seleccionada {
     background: rgba(182, 71, 32, 0.22);
-    margin: 0 -28px;
-    padding: 9px 28px 9px 24px;
-    border-left: 4px solid #F7BA47;
+    margin: 0 -18px;
+    padding: 11px 18px 11px 14px;
+    border-left: 4px solid var(--ink);
   }
 
   .sp-prod-row.seleccionada .sp-prod-nom {
@@ -327,7 +333,7 @@
 
   .sp-prod-nom {
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 12.5px;
+    font-size: 13.5px;
     font-weight: 600;
     color: var(--ink);
     line-height: 1.3;
@@ -335,7 +341,7 @@
 
   .sp-prod-impacte {
     font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 12.5px;
+    font-size: 13.5px;
     font-weight: 600;
     color: var(--color-fosc);
     white-space: nowrap;
@@ -354,7 +360,7 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    font-size: 10.5px;
+    font-size: 11.5px;
     font-weight: 500;
     color: #6b5642;
     font-style: italic;
@@ -362,13 +368,13 @@
 
   .sp-format-dot {
     flex: none;
-    width: 7px;
-    height: 7px;
+    width: 8px;
+    height: 8px;
     border-radius: 1px;
   }
 
   .sp-prod-comarques {
-    font-size: 10.5px;
+    font-size: 11.5px;
     font-weight: 500;
     color: #3d332a;
     text-align: right;
@@ -439,10 +445,10 @@
     border: none;
     box-shadow: 0 2px 8px rgba(20,18,15,0.35);
     border-radius: 3px;
-    padding: 2px 5px;
+    padding: 3px 6px;
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
     font-weight: 500;
-    font-size: 9px;
+    font-size: 10px;
     color: var(--ink);
     text-shadow: none;
     white-space: nowrap;
@@ -501,10 +507,10 @@
   }
 
   .comarca-popup .cp-head {
-    background: var(--panel);
-    color: var(--ink);
+    background: var(--ink);
+    color: var(--panel);
     padding: 9px 12px 7px;
-    border-top: 3px solid #F7BA47;
+    border-top: 3px solid var(--color-fosc);
   }
 
   .comarca-popup .cp-head h2 {
@@ -520,7 +526,7 @@
     gap: 10px;
     font-size: 10.5px;
     font-weight: 500;
-    color: #4a3d30;
+    color: #c9bda8;
   }
 
   .comarca-popup .cp-stats b {
@@ -652,9 +658,7 @@
       </div>
     </div>
 
-    <hr class="sp-divider" />
-
-    <div>
+    <div class="sp-prods-card">
       <div class="sp-prods-list" id="prods-list"></div>
     </div>
   </aside>
@@ -900,7 +904,7 @@
     // existeix), però com és una "function" normal queda hoisted i es pot
     // fer servir aquí sense problemes: en el moment del clic ja estarà
     // definida.
-    row.addEventListener('click', () => seleccionaProduccio(p));
+    row.addEventListener('click', () => seleccionaProduccio(p, { origenLlista: true }));
     prodsListEl.appendChild(row);
   });
 
@@ -1002,10 +1006,10 @@
   comarques.forEach(c => { comarquesByName[c.nom.trim()] = c; });
 
   // Degradat de comarques segons nombre de produccions: blanc (cap) i vuit
-  // graons d'un sol to, ocre-groc corporatiu (Pantone 156 C, #EABE86), cada
-  // cop més saturat i fosc (mateixa tonalitat, no una barreja de colors
-  // diferents).
-  const palette = ["#ffffff","#f6e8d2","#f0dab8","#EABE86","#dda968","#cc9450","#b87d3d","#9c652e","#7a4d20"];
+  // graons que van d'ivori clar fins a prop de l'accent terracota de la
+  // resta de l'app (--color-fosc, #B64720), aclarits un 20% respecte al
+  // to pur perquè el contrast entre graons sigui una mica més suau.
+  const palette = ["#ffffff","#F8F7F5","#EDE8E1","#E4D8CB","#DDC6B2","#D9B397","#D79C79","#D78159","#C56C4D"];
   function colorFor(count) {
     return palette[Math.min(count, palette.length - 1)];
   }
@@ -1193,8 +1197,13 @@
             // clicar-lo: reassignar onclick (no addEventListener) evita
             // acumular listeners si el tooltip es torna a obrir.
             tooltipEl.onclick = e => { e.stopPropagation(); seleccionaProduccio(p, { nomesLlista: true }); };
+            // Un doble clic no ha de fer zoom natiu del navegador: aturar
+            // la propagació abans que arribi al mapa (vegeu també el
+            // marcador, més avall).
+            tooltipEl.ondblclick = e => e.stopPropagation();
           })
           .on('click', () => seleccionaProduccio(p, { nomesLlista: true }))
+          .on('dblclick', L.DomEvent.stopPropagation)
           .addTo(capaPuntsComarca);
         // Comarca a evitar en repartir els cartellets (evitaSolapamentCartellets):
         // aquí sempre és la mateixa, ja que tots els punts d'aquesta capa
@@ -2071,13 +2080,13 @@
   }
 
   // Mides aproximades d'un cartellet (CSS .punt-produccio-label: font-size
-  // 9px, padding 2px 5px): amplada mitjana de caràcter i alçada de línia
+  // 10px, padding 3px 6px): amplada mitjana de caràcter i alçada de línia
   // estimades, prou properes a la real per detectar solapaments sense
   // haver d'obrir el tooltip abans d'hora només per mesurar-lo.
-  const AMPLADA_CARACTER_CARTELLET = 5.4;
-  const ALCADA_CARTELLET = 18;
+  const AMPLADA_CARACTER_CARTELLET = 6;
+  const ALCADA_CARTELLET = 20;
   function rectangleCartell(cx, cy, direccioKey, text) {
-    const amplada = text.length * AMPLADA_CARACTER_CARTELLET + 12;
+    const amplada = text.length * AMPLADA_CARACTER_CARTELLET + 14;
     let left, top;
     if (direccioKey === 'top') { left = cx - amplada / 2; top = cy - ALCADA_CARTELLET; }
     else if (direccioKey === 'bottom') { left = cx - amplada / 2; top = cy; }
@@ -2146,6 +2155,13 @@
   // (capaSeleccionada ja es declara més amunt, a prop de zoomBase)
   let filaSeleccionadaEl = null;
   let nomSeleccionat = null;
+  // Moment (Date.now()) en què es va fixar nomSeleccionat per última
+  // vegada: permet distingir un doble clic real (dues seleccions de la
+  // mateixa producció separades per una fracció de segon, típicament
+  // acompanyades del zoom natiu del navegador/Leaflet) d'un segon clic
+  // deliberat per desmarcar. Vegeu el seu ús a seleccionaProduccio().
+  let momentUltimaSeleccio = 0;
+  const FINESTRA_IGNORA_DOBLE_CLIC = 400;
 
   // Puja la fila seleccionada de la llista de produccions fins que quedi a
   // la zona mig-dalt (no enganxada del tot a la vora superior, com faria
@@ -2182,6 +2198,12 @@
     if (filaSeleccionadaEl) {
       filaSeleccionadaEl.classList.remove('seleccionada');
       filaSeleccionadaEl = null;
+      // Sense cap producció seleccionada, la llista torna a dalt de tot.
+      // Si tot seguit es marca una nova fila (canvi de selecció), el propi
+      // mostraFilaSeleccionada() ho sobreescriu abans que el navegador
+      // arribi a pintar aquest scrollTop=0, així que no hi ha cap salt
+      // visible pel mig.
+      sidePanelEl.scrollTop = 0;
     }
     nomSeleccionat = null;
   }
@@ -2230,6 +2252,12 @@
     if (!p.ubicacions.length) return;
 
     if (nomSeleccionat === p.nom) {
+      // Un doble clic sobre la mateixa localització genera dos clics
+      // seguits (i, si no s'aturés més avall, també el zoom natiu del
+      // navegador): el segon clic no s'ha d'interpretar com un clic
+      // deliberat per desmarcar, sinó ignorar-se perquè el resultat final
+      // sigui idèntic a un sol clic (seleccionat, sense zoom).
+      if (Date.now() - momentUltimaSeleccio < FINESTRA_IGNORA_DOBLE_CLIC) return;
       if (seleccioAmbZoom) {
         desfixaProduccio();
       } else {
@@ -2247,6 +2275,7 @@
 
     if (opcions.nomesLlista) {
       nomSeleccionat = p.nom;
+      momentUltimaSeleccio = Date.now();
       seleccioAmbZoom = false;
       filaSeleccionadaEl = prodsListEl.querySelector(`.sp-prod-row[data-nom="${CSS.escape(p.nom)}"]`);
       if (filaSeleccionadaEl) {
@@ -2290,6 +2319,9 @@
         // cridar seleccionaProduccio(p), que ja detecta que és la mateixa
         // producció seleccionada i la desmarca.
         .on('click', () => seleccionaProduccio(p))
+        // Un doble clic no ha de fer zoom natiu del navegador (vegeu
+        // també tooltipEl.ondblclick, més avall).
+        .on('dblclick', L.DomEvent.stopPropagation)
         .addTo(capaSeleccionada);
       // Una producció repartida entre comarques té una ubicació (i per tant
       // una comarca a evitar) diferent per a cada marcador, a diferència
@@ -2327,17 +2359,23 @@
         // El cartellet ha de fer la mateixa funció que el punt en
         // clicar-lo (desmarcar la producció, ja que és la seleccionada).
         tooltipEl.onclick = e => { e.stopPropagation(); seleccionaProduccio(p); };
+        // Un doble clic no ha de fer zoom natiu del navegador.
+        tooltipEl.ondblclick = e => e.stopPropagation();
       }
     });
     nomSeleccionat = p.nom;
+    momentUltimaSeleccio = Date.now();
 
     filaSeleccionadaEl = prodsListEl.querySelector(`.sp-prod-row[data-nom="${CSS.escape(p.nom)}"]`);
     if (filaSeleccionadaEl) {
       filaSeleccionadaEl.classList.add('seleccionada');
-      // La fila seleccionada sempre puja a la mateixa posició mig-dalt de
-      // la llista (visible i consistent), tant si es clica directament a
-      // la llista com si es clica un punt al mapa.
-      mostraFilaSeleccionada(filaSeleccionadaEl);
+      // La fila puja a la posició mig-dalt de la llista només quan la
+      // selecció ve del mapa (la fila pot no ser visible en aquell
+      // moment): si es clica directament a la llista, la fila ja és
+      // visible i no cal desplaçar res.
+      if (!opcions.origenLlista) {
+        mostraFilaSeleccionada(filaSeleccionadaEl);
+      }
     }
 
     // Lleuger zoom cap a la ubicació (o ubicacions) seleccionada: mig punt
