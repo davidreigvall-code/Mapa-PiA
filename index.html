@@ -87,14 +87,20 @@
     font-weight: 700;
   }
 
-  /* Paleta corporativa de Ponent i Acció (guia d'identitat visual) */
+  /* Paleta corporativa de Ponent i Acció (guia d'identitat visual,
+     actualitzada): --color-clar/--color-mitja/--color-fosc són els tres
+     Pantone oficials (156 C, 4675, 7591 C). --color-fosc-text és una
+     variant més fosca de --color-fosc feta a mà, només per a text sobre
+     fons clar (el BB8060 original no dona prou contrast per llegibilitat
+     en text petit). */
   :root{
-    --daurat: #F7BA47;
-    --malva: #FC828A;
+    --color-clar: #EABE86;
+    --color-mitja: #D9C0A9;
+    --color-fosc: #BB8060;
+    --color-fosc-text: #7A533E;
     --ink: #14120f;
     --paper: #faf8f4;
     --panel: #14120f;
-    --accent-high: #7a1e26;
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
   }
 
@@ -128,7 +134,7 @@
     min-height: clamp(70.5px, 4.8958vw, 131.6px);
     padding: 0 28px;
     box-sizing: border-box;
-    border-bottom: 3px solid var(--daurat);
+    border-bottom: 3px solid #F7BA47;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -186,7 +192,7 @@
     top: 0;
     bottom: 0;
     width: 3px;
-    background: var(--daurat);
+    background: #F7BA47;
   }
 
   header h1 {
@@ -259,7 +265,7 @@
     font-weight: 700;
     font-size: clamp(32px, 3.6vw, 50px);
     line-height: 1.05;
-    color: var(--daurat);
+    color: #F7BA47;
     letter-spacing: -0.01em;
   }
 
@@ -282,42 +288,47 @@
   /* Prova d'usabilitat (25/08/2026, 1 participant): amb contorn fi i
      10.5px, transparent per defecte, la usuària no el va trobar ("no he
      trobat el botó de veure totes") — l'ull li anava directe a la llista
-     de produccions, més grossa i vistosa, just a sota. Ara surt amb fons
-     sòlid des del principi (com abans només en estat .actiu) i lletra més
-     gran; un cop activat es calma cap a l'estil de contorn (ja no cal
-     cridar l'atenció, l'usuari ja sap que està mostrant tots els punts). */
-  .sp-btn-veure-totes {
-    display: block;
-    width: 100%;
+     de produccions, més grossa i vistosa, just a sota. Per això la visió
+     activa (.actiu) es marca amb fons sòlid i lletra grossa: com que
+     sempre n'hi ha una de les dues activa (mai els dos en contorn alhora),
+     sempre hi ha un botó cridant l'atenció. */
+  .sp-visio-toggle {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
     margin: 0 0 14px;
-    padding: 11px 12px;
-    background: var(--daurat);
-    border: 1px solid var(--daurat);
+  }
+
+  .sp-btn-visio {
+    display: block;
+    flex: 1 1 0;
+    padding: 10px 8px;
+    background: transparent;
+    border: 1px solid #F7BA47;
     border-radius: 4px;
-    color: var(--panel);
+    color: #F7BA47;
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 12px;
+    font-size: 12.5px;
     font-weight: 600;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
     text-align: center;
+    line-height: 1.25;
     cursor: pointer;
+  }
+
+  .sp-btn-visio:hover {
+    background: rgba(247, 186, 71, 0.12);
+  }
+
+  .sp-btn-visio.actiu {
+    background: #F7BA47;
+    color: var(--panel);
     box-shadow: 0 2px 10px rgba(247, 186, 71, 0.3);
   }
 
-  .sp-btn-veure-totes:hover {
+  .sp-btn-visio.actiu:hover {
     filter: brightness(1.08);
-  }
-
-  .sp-btn-veure-totes.actiu {
-    background: transparent;
-    color: var(--daurat);
-    box-shadow: none;
-  }
-
-  .sp-btn-veure-totes.actiu:hover {
-    background: rgba(247, 186, 71, 0.12);
-    filter: none;
   }
 
   .sp-prods-list {
@@ -338,17 +349,17 @@
   /* Producció seleccionada (clicada des de la llista o des d'un punt del
      mapa): coincideix visualment amb el punt destacat que apareix al mapa.
      Marge negatiu perquè el fons ocupi tota l'amplada del panell (fins als
-     28px de padding), i una ratlla daurada a l'esquerra com a indicador
+     28px de padding), i una ratlla a l'esquerra com a indicador
      addicional, ben visible encara que el fons de color sigui subtil. */
   .sp-prod-row.seleccionada {
-    background: rgba(247, 186, 71, 0.22);
+    background: rgba(187, 128, 96, 0.22);
     margin: 0 -28px;
     padding: 9px 28px 9px 24px;
-    border-left: 4px solid var(--daurat);
+    border-left: 4px solid #F7BA47;
   }
 
   .sp-prod-row.seleccionada .sp-prod-nom {
-    color: var(--daurat);
+    color: var(--color-fosc);
     font-weight: 700;
   }
 
@@ -371,7 +382,7 @@
     font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
     font-size: 12.5px;
     font-weight: 600;
-    color: var(--daurat);
+    color: #F7BA47;
     white-space: nowrap;
     flex: none;
   }
@@ -465,9 +476,9 @@
      un punt del mapa): tooltip permanent, amb el mateix llenguatge visual
      que les etiquetes de comarca. El color de fons ve del color del
      format (--label-color, fixat per JS a cada cartellet en crear-lo);
-     --malva és només el valor de reserva si mai no s'establís. */
+     --color-fosc és només el valor de reserva si mai no s'establís. */
   .punt-produccio-label {
-    background: var(--label-color, var(--malva));
+    background: var(--label-color, var(--color-fosc));
     border: none;
     box-shadow: 0 2px 8px rgba(20,18,15,0.35);
     border-radius: 3px;
@@ -490,16 +501,16 @@
      les 4 direccions per no xocar-hi entre ells, calen les 4 (Leaflet
      només pinta un dels 4 costats del triangle segons la direcció). */
   .punt-produccio-label.leaflet-tooltip-top::before {
-    border-top-color: var(--label-color, var(--malva)) !important;
+    border-top-color: var(--label-color, var(--color-fosc)) !important;
   }
   .punt-produccio-label.leaflet-tooltip-bottom::before {
-    border-bottom-color: var(--label-color, var(--malva)) !important;
+    border-bottom-color: var(--label-color, var(--color-fosc)) !important;
   }
   .punt-produccio-label.leaflet-tooltip-left::before {
-    border-left-color: var(--label-color, var(--malva)) !important;
+    border-left-color: var(--label-color, var(--color-fosc)) !important;
   }
   .punt-produccio-label.leaflet-tooltip-right::before {
-    border-right-color: var(--label-color, var(--malva)) !important;
+    border-right-color: var(--label-color, var(--color-fosc)) !important;
   }
   /* Les variants top/bottom amb desplaçament horitzontal (per no xocar amb
      un altre cartellet, vegeu DIRECCIONS_CARTELLET) mouen tota la capsa
@@ -536,7 +547,7 @@
     background: var(--panel);
     color: var(--paper);
     padding: 9px 12px 7px;
-    border-top: 3px solid var(--malva);
+    border-top: 3px solid #F7BA47;
   }
 
   .comarca-popup .cp-head h2 {
@@ -555,7 +566,7 @@
   }
 
   .comarca-popup .cp-stats b {
-    color: var(--daurat);
+    color: #F7BA47;
     font-size: 12px;
     display: block;
     font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
@@ -604,7 +615,7 @@
 
   .comarca-popup .cp-item .cp-impacte {
     font-size: 10.5px;
-    color: var(--accent-high);
+    color: var(--color-fosc-text);
     font-weight: 500;
     white-space: nowrap;
     margin-left: 8px;
@@ -686,7 +697,10 @@
     <hr class="sp-divider" />
 
     <div>
-      <button type="button" id="btn-veure-totes" class="sp-btn-veure-totes">Veure totes les produccions al mapa</button>
+      <div class="sp-visio-toggle">
+        <button type="button" id="btn-visio-general" class="sp-btn-visio actiu">Visió general del mapa</button>
+        <button type="button" id="btn-visio-produccions" class="sp-btn-visio">Produccions repartides al mapa</button>
+      </div>
       <div class="sp-prods-list" id="prods-list"></div>
     </div>
   </aside>
@@ -1033,9 +1047,11 @@
   // en els noms de comarca quan aquests vinguin d'una font externa.
   comarques.forEach(c => { comarquesByName[c.nom.trim()] = c; });
 
-  // ---- Escala de color: blanc (0) -> daurat (color corporatiu principal,
-  // "Un horitzó per explorar") -> daurat intens (8), opacitat 100% ----
-  const palette = ["#ffffff","#fdf6e8","#fbe9c2","#F7D18B","#F7BA47","#e0a233","#c48a24","#a06f18","#7a530f"];
+  // Degradat de comarques segons nombre de produccions: blanc (cap) i
+  // vuit graons entre els tres colors corporatius, en ordre clar → fosc
+  // (#EABE86 → #D9C0A9 → #BB8060), amb els tres tons exactes als graons
+  // 2, 4 i 7; els intermedis són interpolacions lineals entre ells.
+  const palette = ["#ffffff","#f4dec2","#EABE86","#e1bf97","#D9C0A9","#cfab91","#c5967a","#BB8060","#96664f"];
   function colorFor(count) {
     return palette[Math.min(count, palette.length - 1)];
   }
@@ -2088,7 +2104,12 @@
   // necessitar forçar-ne només una).
   const DIRECCIO_FORÇADA = {
     'SHADES OF PARADISE|Segarra': 'bottom',
-    'VIDEOCLIP ANTIGA ACADEMIA|Urgell': 'left'
+    'VIDEOCLIP ANTIGA ACADEMIA|Urgell': 'left',
+    // L'Equilibri i Túnel de Montclar són a Mollerussa, a menys d'1 km:
+    // l'automàtic els acaba apilant amunt/avall amb offsets grans, deixant
+    // massa buit entre punt i cartellet. Es posen de costat en comptes.
+    "L'EQUILIBRI|Pla d'Urgell": 'left',
+    'TÚNEL DE MONTCLAR|Pla d\'Urgell': 'right'
   };
   function direccioForçada(p, u) {
     return DIRECCIO_FORÇADA[`${p.nom}|${u.comarca}`] || null;
@@ -2231,12 +2252,15 @@
     });
   });
 
-  const btnVeureTotes = document.getElementById('btn-veure-totes');
-  btnVeureTotes.addEventListener('click', () => {
-    // Si hi havia una producció seleccionada o una comarca expandida, es
-    // desmarquen en activar "veure totes" (evita el conflicte visual amb
-    // tots els punts alhora); desfixaProduccio() ja porta el mapa de
-    // tornada al centre/zoom inicial.
+  const btnVisioGeneral = document.getElementById('btn-visio-general');
+  const btnVisioProduccions = document.getElementById('btn-visio-produccions');
+
+  // Neteja compartida pels dos botons de visió (abans nomes calia per
+  // activar "veure totes"; ara qualsevol canvi de visió —cap a la general
+  // o cap a la de tots els punts— ha de plegar la comarca expandida i
+  // desseleccionar la producció triada, per no deixar-les visualment en
+  // conflicte amb la nova visió).
+  function netejaAbansDeCanviarVisio() {
     if (capaPuntsComarca) {
       map.removeLayer(capaPuntsComarca);
       capaPuntsComarca = null;
@@ -2244,15 +2268,22 @@
       comarcaExpandida = null;
     }
     desfixaProduccio();
-    if (map.hasLayer(puntsProduccions)) {
-      map.removeLayer(puntsProduccions);
-      btnVeureTotes.classList.remove('actiu');
-      veureTotesActiu = false;
-    } else {
-      puntsProduccions.addTo(map);
-      btnVeureTotes.classList.add('actiu');
-      veureTotesActiu = true;
-    }
+  }
+
+  btnVisioGeneral.addEventListener('click', () => {
+    netejaAbansDeCanviarVisio();
+    if (map.hasLayer(puntsProduccions)) map.removeLayer(puntsProduccions);
+    veureTotesActiu = false;
+    btnVisioGeneral.classList.add('actiu');
+    btnVisioProduccions.classList.remove('actiu');
+  });
+
+  btnVisioProduccions.addEventListener('click', () => {
+    netejaAbansDeCanviarVisio();
+    if (!map.hasLayer(puntsProduccions)) puntsProduccions.addTo(map);
+    veureTotesActiu = true;
+    btnVisioProduccions.classList.add('actiu');
+    btnVisioGeneral.classList.remove('actiu');
   });
 
   // Punt destacat: només n'hi ha un alhora (seleccionar-ne un altre fa
@@ -2262,6 +2293,21 @@
   // (capaSeleccionada ja es declara més amunt, a prop de zoomBase)
   let filaSeleccionadaEl = null;
   let nomSeleccionat = null;
+
+  // Puja la fila seleccionada de la llista de produccions fins que quedi a
+  // la zona mig-dalt (no enganxada del tot a la vora superior, com faria
+  // scrollIntoView({block:'start'}), ni centrada): es calcula a mà perquè
+  // scrollIntoView només ofereix 'start'/'center'/'end'/'nearest', sense
+  // cap opció intermèdia.
+  const sidePanelEl = document.getElementById('side-panel');
+  const FRACCIO_MARGE_SUPERIOR_SELECCIO = 0.18;
+  function mostraFilaSeleccionada(el) {
+    const contenidorRect = sidePanelEl.getBoundingClientRect();
+    const filaRect = el.getBoundingClientRect();
+    const desplaçament = (filaRect.top - contenidorRect.top) - sidePanelEl.clientHeight * FRACCIO_MARGE_SUPERIOR_SELECCIO;
+    const maxScroll = sidePanelEl.scrollHeight - sidePanelEl.clientHeight;
+    sidePanelEl.scrollTop = Math.max(0, Math.min(sidePanelEl.scrollTop + desplaçament, maxScroll));
+  }
   // Si la selecció actual s'ha fet amb zoom + marcador destacat (des de la
   // llista) o només marcant la fila (des d'un punt/cartellet ja visible al
   // mapa). Cal recordar-ho per saber, en desseleccionar, si també s'ha de
@@ -2352,7 +2398,7 @@
       filaSeleccionadaEl = prodsListEl.querySelector(`.sp-prod-row[data-nom="${CSS.escape(p.nom)}"]`);
       if (filaSeleccionadaEl) {
         filaSeleccionadaEl.classList.add('seleccionada');
-        filaSeleccionadaEl.scrollIntoView({ block: 'nearest' });
+        mostraFilaSeleccionada(filaSeleccionadaEl);
       }
       return;
     }
@@ -2435,11 +2481,10 @@
     filaSeleccionadaEl = prodsListEl.querySelector(`.sp-prod-row[data-nom="${CSS.escape(p.nom)}"]`);
     if (filaSeleccionadaEl) {
       filaSeleccionadaEl.classList.add('seleccionada');
-      // 'nearest': si la fila ja és visible (p. ex. clicant-la directament
-      // a la llista), no mou el scroll gens; només desplaça el mínim
-      // imprescindible quan cal (p. ex. en clicar un punt al mapa i la
-      // fila corresponent queda fora de vista).
-      filaSeleccionadaEl.scrollIntoView({ block: 'nearest' });
+      // La fila seleccionada sempre puja a la mateixa posició mig-dalt de
+      // la llista (visible i consistent), tant si es clica directament a
+      // la llista com si es clica un punt al mapa.
+      mostraFilaSeleccionada(filaSeleccionadaEl);
     }
 
     // Lleuger zoom cap a la ubicació (o ubicacions) seleccionada: mig punt
