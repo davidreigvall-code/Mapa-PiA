@@ -96,11 +96,11 @@
   :root{
     --color-clar: #EABE86;
     --color-mitja: #D9C0A9;
-    --color-fosc: #BB8060;
-    --color-fosc-text: #7A533E;
+    --color-fosc: #C46A4E;
+    --color-fosc-text: #894A37;
     --ink: #14120f;
     --paper: #faf8f4;
-    --panel: #14120f;
+    --panel: #F2EDE6;
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
   }
 
@@ -129,12 +129,12 @@
      a diferència de l'intent anterior, que barrejava un valor en vw amb
      un altre en px fix i acabaven descoordinats. */
   header {
-    background: var(--panel);
-    color: var(--paper);
+    background: var(--color-fosc);
+    color: var(--panel);
     min-height: clamp(70.5px, 4.8958vw, 131.6px);
     padding: 0 28px;
     box-sizing: border-box;
-    border-bottom: 3px solid #F7BA47;
+    border-bottom: 3px solid var(--panel);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -192,7 +192,7 @@
     top: 0;
     bottom: 0;
     width: 3px;
-    background: #F7BA47;
+    background: var(--panel);
   }
 
   header h1 {
@@ -202,7 +202,7 @@
     font-weight: 400;
     letter-spacing: 0.13em;
     text-transform: uppercase;
-    color: var(--paper);
+    color: var(--panel);
   }
 
   #legend-bar {
@@ -211,7 +211,7 @@
     gap: clamp(9.4px, 0.651vw, 17.5px);
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
     font-size: clamp(10.3px, 0.716vw, 19.25px);
-    color: #d8cdb8;
+    color: var(--panel);
   }
 
   #legend-bar .swatches {
@@ -240,7 +240,7 @@
     min-width: 280px;
     max-width: 480px;
     background: var(--panel);
-    color: var(--paper);
+    color: var(--ink);
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -265,7 +265,7 @@
     font-weight: 700;
     font-size: clamp(32px, 3.6vw, 50px);
     line-height: 1.05;
-    color: #F7BA47;
+    color: var(--color-fosc);
     letter-spacing: -0.01em;
   }
 
@@ -275,7 +275,7 @@
     font-weight: 400;
     letter-spacing: 0.13em;
     text-transform: uppercase;
-    color: #cbbfa9;
+    color: #6b5a4a;
     margin-top: 3px;
   }
 
@@ -283,52 +283,6 @@
     border: none;
     border-top: 1px solid #3a332a;
     margin: 0;
-  }
-
-  /* Prova d'usabilitat (25/08/2026, 1 participant): amb contorn fi i
-     10.5px, transparent per defecte, la usuària no el va trobar ("no he
-     trobat el botó de veure totes") — l'ull li anava directe a la llista
-     de produccions, més grossa i vistosa, just a sota. Per això la visió
-     activa (.actiu) es marca amb fons sòlid i lletra grossa: com que
-     sempre n'hi ha una de les dues activa (mai els dos en contorn alhora),
-     sempre hi ha un botó cridant l'atenció. */
-  .sp-visio-toggle {
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
-    margin: 0 0 14px;
-  }
-
-  .sp-btn-visio {
-    display: block;
-    flex: 1 1 0;
-    padding: 10px 8px;
-    background: transparent;
-    border: 1px solid #F7BA47;
-    border-radius: 4px;
-    color: #F7BA47;
-    font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 12.5px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    text-align: center;
-    line-height: 1.25;
-    cursor: pointer;
-  }
-
-  .sp-btn-visio:hover {
-    background: rgba(247, 186, 71, 0.12);
-  }
-
-  .sp-btn-visio.actiu {
-    background: #F7BA47;
-    color: var(--panel);
-    box-shadow: 0 2px 10px rgba(247, 186, 71, 0.3);
-  }
-
-  .sp-btn-visio.actiu:hover {
-    filter: brightness(1.08);
   }
 
   .sp-prods-list {
@@ -352,7 +306,7 @@
      28px de padding), i una ratlla a l'esquerra com a indicador
      addicional, ben visible encara que el fons de color sigui subtil. */
   .sp-prod-row.seleccionada {
-    background: rgba(187, 128, 96, 0.22);
+    background: rgba(196, 106, 78, 0.22);
     margin: 0 -28px;
     padding: 9px 28px 9px 24px;
     border-left: 4px solid #F7BA47;
@@ -374,7 +328,7 @@
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
     font-size: 12.5px;
     font-weight: 500;
-    color: var(--paper);
+    color: var(--ink);
     line-height: 1.3;
   }
 
@@ -382,7 +336,7 @@
     font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
     font-size: 12.5px;
     font-weight: 600;
-    color: #F7BA47;
+    color: var(--color-fosc);
     white-space: nowrap;
     flex: none;
   }
@@ -400,7 +354,7 @@
     align-items: center;
     gap: 5px;
     font-size: 10.5px;
-    color: #cbbfa9;
+    color: #8a7560;
     font-style: italic;
   }
 
@@ -413,7 +367,7 @@
 
   .sp-prod-comarques {
     font-size: 10.5px;
-    color: #9c9182;
+    color: #5a4d3f;
     text-align: right;
   }
 
@@ -545,7 +499,7 @@
 
   .comarca-popup .cp-head {
     background: var(--panel);
-    color: var(--paper);
+    color: var(--ink);
     padding: 9px 12px 7px;
     border-top: 3px solid #F7BA47;
   }
@@ -562,11 +516,11 @@
     display: flex;
     gap: 10px;
     font-size: 10.5px;
-    color: #cbbfa9;
+    color: #6b5a4a;
   }
 
   .comarca-popup .cp-stats b {
-    color: #F7BA47;
+    color: var(--color-fosc);
     font-size: 12px;
     display: block;
     font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
@@ -697,10 +651,6 @@
     <hr class="sp-divider" />
 
     <div>
-      <div class="sp-visio-toggle">
-        <button type="button" id="btn-visio-general" class="sp-btn-visio actiu">Visió general del mapa</button>
-        <button type="button" id="btn-visio-produccions" class="sp-btn-visio">Produccions repartides al mapa</button>
-      </div>
       <div class="sp-prods-list" id="prods-list"></div>
     </div>
   </aside>
@@ -1071,8 +1021,8 @@
 
   // ---- Expandir una comarca en fer-hi clic ----
   // En lloc de fixar el popup (com abans), un clic sobre una comarca hi fa
-  // un petit zoom i en desplega els punts de rodatge (mateix estil visual
-  // que "veure totes", però només amb les produccions d'aquesta comarca).
+  // un petit zoom i en desplega els punts de rodatge de les produccions
+  // d'aquesta comarca.
   // Prova d'usabilitat (25/08/2026): la usuària esperava exactament
   // això — que clicant una comarca es veiessin les seves produccions —
   // en lloc de la llista fixa amb botó de tancar que hi havia abans.
@@ -1208,7 +1158,12 @@
           color: "#ffffff",
           weight: 1.5,
           fillColor: "#14120f",
-          fillOpacity: 1
+          // Invisible d'entrada (opacity/fillOpacity 0): igual que els
+          // cartellets, el punt tampoc s'ha de veure aparèixer enmig de
+          // l'animació de zoom, sinó tot de cop quan arribi a 'moveend'
+          // (vegeu més avall, on es restauren a 1).
+          opacity: 0,
+          fillOpacity: 0
         })
           // No permanent a l'inici (s'obre sol si el marcador ja és al
           // mapa): es vol que els cartellets apareguin junts un cop el
@@ -1227,9 +1182,7 @@
             tooltipEl.style.setProperty('--punxa-x', -L.point(tooltip.options.offset).x + 'px');
             // Aquest cartellet és permanent (no es tanca mai en treure el
             // ratolí de sobre), així que reactivar-hi els clics és segur:
-            // no hi ha risc que es "robi" el hover al punt i es tanqui sol
-            // (el bug que sí que afectava els cartellets NOMÉS-hover de
-            // puntsProduccions, vegeu el comentari de la seva CSS).
+            // no hi ha risc que es "robi" el hover al punt i es tanqui sol.
             tooltipEl.style.pointerEvents = 'auto';
             tooltipEl.style.cursor = 'pointer';
             // El cartellet ha de fer la mateixa funció que el punt en
@@ -1279,15 +1232,19 @@
         });
       });
       evitaSolapamentCartellets(marcadors);
-      marcadors.forEach(marcador => marcador.openTooltip());
+      marcadors.forEach(marcador => {
+        marcador.setStyle({ opacity: 1, fillOpacity: 1 });
+        marcador.openTooltip();
+      });
     });
 
-    // Zoom petit i lent (més suau que el de seleccionar una producció):
-    // prou per distingir la comarca sense allunyar-se massa de la resta.
+    // Zoom petit i suau (una mica més lent que el de seleccionar una
+    // producció): prou per distingir la comarca sense allunyar-se massa
+    // de la resta.
     map.flyToBounds(layer.getBounds(), {
       padding: [40, 40],
       maxZoom: Math.min(zoomBase + 1, map.getMaxZoom()),
-      duration: 1.6,
+      duration: 1.2,
       easeLinearity: 0.15
     });
   }
@@ -1684,7 +1641,6 @@
         const html = buildPopupHtml(c);
 
         layer.on('mouseover', function (e) {
-          if (veureTotesActiu) return;
           // Mentre hi ha una comarca expandida (clicada), o mentre el mapa
           // encara torna cap a la posició inicial d'haver-ne plegat una
           // (plegantComarca), no es mostra el popup de hover per a cap
@@ -1702,7 +1658,6 @@
         });
 
         layer.on('mousemove', function (e) {
-          if (veureTotesActiu) return;
           if (comarcaExpandida || plegantComarca) return;
           // Segueix el ratolí (posició), però sense recalcular costatPopupActual:
           // aquest ja es va decidir un sol cop a 'mouseover'.
@@ -1721,7 +1676,7 @@
 
         layer.on('click', function (e) {
           if (e.originalEvent) e.originalEvent.stopPropagation();
-          if (veureTotesActiu || acabaDArrossegar) return;
+          if (acabaDArrossegar) return;
           // Si hi havia una producció seleccionada (des de la llista, amb
           // zoom), clicar una comarca la substitueix en lloc de quedar
           // bloquejat fins que l'usuari la desmarqui a mà: només es
@@ -1785,12 +1740,6 @@
   // més profund en lloc d'apropar-se sempre el mateix punt.
   let zoomBase = 0;
 
-  // Quan "Veure totes les produccions al mapa" està actiu, es desactiva
-  // el hover de comarques (definit més avall a geoLayer): amb tots els
-  // punts i les seves etiquetes ja mostrats, el popup de comarca en passar
-  // el ratolí per sobre només afegia soroll visual.
-  let veureTotesActiu = false;
-
   // Capa amb els punts de la producció seleccionada (definida més avall,
   // però cal declarar-la aquí: actualitzaLimitsSegonsZoom() —que la fa
   // servir— ja s'executa un cop dins refitMap(), abans de la resta del
@@ -1823,12 +1772,13 @@
     // definitiu correcte (no un valor a mig animar).
     map.fitBounds(targetBounds, { ...fitOptions, animate: false });
     // El zoom-out màxim és la posició inicial mateixa: no es pot allunyar
-    // més enllà de l'enquadrament d'entrada. L'apropament arriba fins a 3
-    // nivells més (abans 5: es podia arribar a un apropament excessiu).
+    // més enllà de l'enquadrament d'entrada. L'apropament arriba fins a 2
+    // nivells més (abans 3, i abans 5: es podia arribar a un apropament
+    // excessiu).
     const zoomInicial = map.getZoom();
     zoomBase = zoomInicial;
     map.setMinZoom(zoomInicial);
-    map.setMaxZoom(zoomInicial + 3);
+    map.setMaxZoom(zoomInicial + 2);
     actualitzaLimitsSegonsZoom();
     aplicaPatroRatllat();
     dibuixaContornObjectiu();
@@ -2109,7 +2059,8 @@
     // l'automàtic els acaba apilant amunt/avall amb offsets grans, deixant
     // massa buit entre punt i cartellet. Es posen de costat en comptes.
     "L'EQUILIBRI|Pla d'Urgell": 'left',
-    'TÚNEL DE MONTCLAR|Pla d\'Urgell': 'right'
+    'TÚNEL DE MONTCLAR|Pla d\'Urgell': 'right',
+    'TRAUMATIC|Pla d\'Urgell': 'bottom'
   };
   function direccioForçada(p, u) {
     return DIRECCIO_FORÇADA[`${p.nom}|${u.comarca}`] || null;
@@ -2186,110 +2137,8 @@
     });
   }
 
-  // Capa amb tots els punts alhora (es mostra/amaga sencera amb el botó
-  // "Veure totes les produccions al mapa"). No s'afegeix al mapa d'entrada.
-  const puntsProduccions = L.layerGroup();
-  produccionsOrdenades.forEach(p => {
-    const colorPunt = colorFormat(p.format);
-    p.ubicacions.forEach(u => {
-      const direccioPuntVeureTotes = DIRECCIONS_CARTELLET.find(
-        d => d.key === (direccioForçada(p, u) || 'top')
-      );
-      const marcador = L.circleMarker([u.lat, u.lon], {
-        pane: 'punts-pane',
-        radius: 5,
-        color: "#ffffff",
-        weight: 1.5,
-        fillColor: "#14120f",
-        fillOpacity: 1
-      })
-        .bindTooltip(etiquetaUbicacio(p, u), {
-          // Aquesta capa no passa pel repartiment automàtic
-          // (evitaSolapamentCartellets): direcció fixa 'top', excepte els
-          // punts de DIRECCIO_FORÇADA.
-          direction: direccioPuntVeureTotes.key,
-          offset: direccioPuntVeureTotes.offset,
-          className: 'punt-produccio-label'
-        })
-        // Tooltip NO permanent: es crea/destrueix cada cop que s'obre, així
-        // que --label-color (llegida per .punt-produccio-label) s'ha de
-        // fixar en cada obertura, no un sol cop en crear el marcador.
-        .on('tooltipopen', function () {
-          const tooltipEl = this.getTooltip().getElement();
-          tooltipEl.style.setProperty('--label-color', colorPunt);
-          // El cartellet ha de fer la mateixa funció que el punt en
-          // clicar-lo (com qualsevol altre cartellet).
-          tooltipEl.style.pointerEvents = 'auto';
-          tooltipEl.style.cursor = 'pointer';
-          tooltipEl.onclick = e => { e.stopPropagation(); seleccionaProduccio(p, { nomesLlista: true }); };
-          // Entre el punt i el seu cartellet (offset [0,-6] + la fletxa
-          // pròpia del tooltip de Leaflet) hi ha uns quants px de buit real:
-          // en moure-hi el ratolí de pressa, el 'mouseout' del punt arriba
-          // amb relatedTarget que no és ni el punt ni el cartellet (és el
-          // fons del mapa), de manera que comprovar només el relatedTarget
-          // no basta i el cartellet es tanca abans que el ratolí hi arribi.
-          // cancelaTancament()/programaTancament() (definits més avall)
-          // donen un marge de temps que cobreix aquest buit.
-          tooltipEl.onmouseenter = cancelaTancament;
-          tooltipEl.onmouseleave = programaTancament;
-        })
-        .on('click', () => seleccionaProduccio(p, { nomesLlista: true }))
-        .addTo(puntsProduccions);
-      let tancamentPendent = null;
-      function cancelaTancament() {
-        if (tancamentPendent) { clearTimeout(tancamentPendent); tancamentPendent = null; }
-      }
-      function programaTancament() {
-        cancelaTancament();
-        tancamentPendent = setTimeout(() => { marcador.closeTooltip(); tancamentPendent = null; }, 200);
-      }
-      // Substitueix el tancament automàtic de Leaflet en mouseout (immediat)
-      // pel propi: dona marge perquè el ratolí arribi al cartellet abans de
-      // tancar-lo de debò (vegeu el comentari a 'tooltipopen').
-      marcador.off('mouseout');
-      marcador.on('mouseout', programaTancament);
-      marcador.on('mouseover', cancelaTancament);
-    });
-  });
-
-  const btnVisioGeneral = document.getElementById('btn-visio-general');
-  const btnVisioProduccions = document.getElementById('btn-visio-produccions');
-
-  // Neteja compartida pels dos botons de visió (abans nomes calia per
-  // activar "veure totes"; ara qualsevol canvi de visió —cap a la general
-  // o cap a la de tots els punts— ha de plegar la comarca expandida i
-  // desseleccionar la producció triada, per no deixar-les visualment en
-  // conflicte amb la nova visió).
-  function netejaAbansDeCanviarVisio() {
-    if (capaPuntsComarca) {
-      map.removeLayer(capaPuntsComarca);
-      capaPuntsComarca = null;
-      desressaltaComarca(comarcaExpandida);
-      comarcaExpandida = null;
-    }
-    desfixaProduccio();
-  }
-
-  btnVisioGeneral.addEventListener('click', () => {
-    netejaAbansDeCanviarVisio();
-    if (map.hasLayer(puntsProduccions)) map.removeLayer(puntsProduccions);
-    veureTotesActiu = false;
-    btnVisioGeneral.classList.add('actiu');
-    btnVisioProduccions.classList.remove('actiu');
-  });
-
-  btnVisioProduccions.addEventListener('click', () => {
-    netejaAbansDeCanviarVisio();
-    if (!map.hasLayer(puntsProduccions)) puntsProduccions.addTo(map);
-    veureTotesActiu = true;
-    btnVisioProduccions.classList.add('actiu');
-    btnVisioGeneral.classList.remove('actiu');
-  });
-
   // Punt destacat: només n'hi ha un alhora (seleccionar-ne un altre fa
-  // desaparèixer l'anterior). És independent de puntsProduccions: es pot
-  // seleccionar una producció tant si "veure totes" està activat com si
-  // no.
+  // desaparèixer l'anterior).
   // (capaSeleccionada ja es declara més amunt, a prop de zoomBase)
   let filaSeleccionadaEl = null;
   let nomSeleccionat = null;
@@ -2365,8 +2214,8 @@
   // més d'una ubicació de rodatge: totes hi apareixen alhora.
   //
   // opcions.nomesLlista: true quan el clic ve d'un punt o cartellet ja
-  // visible al mapa (amb "veure totes" o una comarca expandida) — en
-  // aquest cas el punt ja s'hi veu, així que NOMÉS es marca la fila
+  // visible al mapa (amb una comarca expandida) — en aquest cas el punt
+  // ja s'hi veu, així que NOMÉS es marca la fila
   // corresponent a la llista: no es mou el mapa, no es crea cap marcador
   // destacat, i la resta de punts es mantenen exactament igual (no es
   // plega la comarca expandida ni res). Des de la llista (sense aquesta
@@ -2432,10 +2281,10 @@
           permanent: true,
           className: 'punt-produccio-label'
         })
-        // El punt destacat no forma part de puntsProduccions (que és on
-        // s'enganxa el clic per seleccionar), així que cal el seu propi
-        // listener: clicar-lo torna a cridar seleccionaProduccio(p), que ja
-        // detecta que és la mateixa producció seleccionada i la desmarca.
+        // Cal el seu propi listener de clic (el punt destacat no forma
+        // part de cap altra capa amb clic ja enganxat): clicar-lo torna a
+        // cridar seleccionaProduccio(p), que ja detecta que és la mateixa
+        // producció seleccionada i la desmarca.
         .on('click', () => seleccionaProduccio(p))
         .addTo(capaSeleccionada);
       // Una producció repartida entre comarques té una ubicació (i per tant
