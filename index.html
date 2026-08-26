@@ -148,36 +148,33 @@
     z-index: 10;
   }
 
-  /* El logo es treu del flux (position: absolute) i es centra verticalment
-     de manera independent: com que és més alt que el propi capçalera
-     (110px vs 94px), si es deixés dins el flux flexbox arrossegaria el
-     text i la llegenda cap al seu propi centre en lloc del centre real del
-     requadre. Amb position:absolute, el text i la llegenda es centren
-     només respecte al capçalera (94px), i el logo es centra per separat
-     amb el mateix punt mig — així els tres queden alineats al centre
-     vertical real del requadre negre, sense canviar-ne la mida. Els marges
-     transparents de la imatge fan que sobresortir uns 8px per dalt i per
-     baix no talli cap contingut visible del logotip. */
+  /* padding-left lligat a la mateixa mida que #side-panel (flex: 0 0 32%,
+     min-width 260px, max-width 420px, + 20px de marge): així el títol
+     comença sempre a l'alçada d'on acaba el panell de sota, sigui quina
+     sigui l'amplada de la finestra. */
   header .title-block {
     position: relative;
-    padding-left: clamp(270px, 18.75vw, 504px);
+    padding-left: clamp(280px, 32vw + 20px, 440px);
   }
 
-  /* Alineat amb el marge esquerre del contingut (28px, el mateix que fa
-     servir #side-panel per al seu propi text), perquè quedi a l'alçada
-     del text de sota. Penja directament de <header> (no de .title-block)
-     pel mateix motiu que la ratlla: "left" no ha d'arrossegar el padding
-     del capçalera, per això aquí es fixa explícitament a 28px. S'usa la
-     variant "transparent" (no la "negatiu", que porta un fons negre
-     opac) i es converteix a blanc pla per filtre CSS: brightness(0)
-     converteix qualsevol color opac a negre (conservant la transparència),
-     invert(1) el passa a blanc. */
+  /* El logo es treu del flux (position: absolute) i es centra verticalment
+     de manera independent: com que és més alt que el propi capçalera, si
+     es deixés dins el flux flexbox arrossegaria el text i la llegenda cap
+     al seu propi centre en lloc del centre real del requadre. Amb
+     position:absolute, el text i la llegenda es centren només respecte al
+     capçalera, i el logo es centra per separat amb el mateix punt mig.
+     Alineat amb el marge esquerre del contingut (28px, el mateix que fa
+     servir #side-panel per al seu propi text). S'usa la variant
+     "transparent" (no la "negatiu", que porta un fons negre opac) i es
+     converteix a blanc pla per filtre CSS: brightness(0) converteix
+     qualsevol color opac a negre (conservant la transparència), invert(1)
+     el passa a blanc. */
   header .brand-logo {
     position: absolute;
     left: 28px;
     top: 50%;
     transform: translateY(-50%);
-    height: clamp(82.5px, 5.7292vw, 154px);
+    height: clamp(94.9px, 6.5885vw, 177.1px);
     width: auto;
     display: block;
     filter: brightness(0) invert(1);
@@ -189,15 +186,16 @@
     gap: 2px;
   }
 
-  /* Ratlla vertical daurada com a marcador decoratiu a l'esquerra del
-     títol, entre el logo i el text. Coordenada fixa (no vw ni % de
-     l'amplada de finestra/panell) dins l'espai que .title-block ja
-     reserva per al logo (padding-left: 360px): així mai depèn ni de la
-     mida de pantalla ni de la llargada del text del títol, i no pot
-     tornar a acabar dibuixant-se per sobre seu. */
+  /* Ratlla vertical com a marcador decoratiu a l'esquerra del títol,
+     centrada exactament sobre la barra de scroll de #side-panel (no
+     sobre la seva vora): la vora dreta del panell fa servir els mateixos
+     valors clamp que la seva amplada (32%, mín. 260px, màx. 420px), i es
+     resta la meitat de --scroll-w (mesurada per JS al principi del bloc
+     de codi principal) i la meitat del propi gruix de la ratlla (3px) per
+     centrar-la de debò sobre la barra, no sobre la vora del panell. */
   header .title-rule {
     position: absolute;
-    left: clamp(255px, 17.7083vw, 476px);
+    left: calc(clamp(260px, 32vw, 420px) - (var(--scroll-w, 15px) / 2) - 1.5px);
     top: 0;
     bottom: 0;
     width: 3px;
@@ -245,7 +243,7 @@
 
   /* Panell lateral esquerre: resum institucional per a projecció */
   #side-panel {
-    flex: 0 0 30%;
+    flex: 0 0 32%;
     min-width: 260px;
     max-width: 420px;
     background: var(--panel);
@@ -680,6 +678,22 @@
 
 <script>
 (async function () {
+  // Mesura l'amplada real de la barra de scroll del navegador (varia
+  // segons SO/navegador, i és 0 en alguns amb overlay): un div temporal
+  // amb overflow:scroll força que la barra hi aparegui sempre, sense
+  // dependre que #side-panel tingui prou contingut per desbordar en
+  // aquest moment. --scroll-w l'usa header .title-rule per centrar-se
+  // exactament sobre la barra de scroll del panell, no sobre la seva
+  // vora.
+  (function mesuraAmpladaScroll() {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:absolute; top:-9999px; left:-9999px; width:100px; height:100px; overflow:scroll;';
+    document.body.appendChild(div);
+    const amplada = div.offsetWidth - div.clientWidth;
+    document.body.removeChild(div);
+    document.documentElement.style.setProperty('--scroll-w', amplada + 'px');
+  })();
+
   // ============================================================
   // DADES DE NEGOCI — produccions per comarca
   // Es carreguen en viu des d'un Google Sheet publicat com a CSV
