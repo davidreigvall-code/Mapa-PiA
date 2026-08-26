@@ -88,16 +88,17 @@
   }
 
   /* Paleta corporativa de Ponent i Acció (guia d'identitat visual,
-     actualitzada): --color-clar/--color-mitja/--color-fosc són els tres
-     Pantone oficials (156 C, 4675, 7591 C). --color-fosc-text és una
-     variant més fosca de --color-fosc feta a mà, només per a text sobre
-     fons clar (el BB8060 original no dona prou contrast per llegibilitat
-     en text petit). */
+     actualitzada): --color-clar/--color-mitja són els Pantone oficials
+     (156 C, 4675). --color-fosc és una variant reforçada (més saturada i
+     fosca) del Pantone 7591 C, perquè l'accent principal de l'app tingui
+     més força visual que el to pla original. --color-fosc-text és una
+     variant encara més fosca de --color-fosc feta a mà, només per a text
+     sobre fons clar. */
   :root{
     --color-clar: #EABE86;
     --color-mitja: #D9C0A9;
-    --color-fosc: #C46A4E;
-    --color-fosc-text: #894A37;
+    --color-fosc: #BD5936;
+    --color-fosc-text: #843E26;
     --ink: #14120f;
     --paper: #faf8f4;
     --panel: #F2EDE6;
@@ -199,7 +200,7 @@
     margin: 0;
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
     font-size: clamp(15px, 1.0417vw, 28px);
-    font-weight: 400;
+    font-weight: 500;
     letter-spacing: 0.13em;
     text-transform: uppercase;
     color: var(--panel);
@@ -272,7 +273,7 @@
   .sp-stat-label {
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
     font-size: 10.5px;
-    font-weight: 400;
+    font-weight: 600;
     letter-spacing: 0.13em;
     text-transform: uppercase;
     color: #6b5a4a;
@@ -327,7 +328,7 @@
   .sp-prod-nom {
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
     font-size: 12.5px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--ink);
     line-height: 1.3;
   }
@@ -354,6 +355,7 @@
     align-items: center;
     gap: 5px;
     font-size: 10.5px;
+    font-weight: 500;
     color: #8a7560;
     font-style: italic;
   }
@@ -367,6 +369,7 @@
 
   .sp-prod-comarques {
     font-size: 10.5px;
+    font-weight: 500;
     color: #5a4d3f;
     text-align: right;
   }
@@ -516,6 +519,7 @@
     display: flex;
     gap: 10px;
     font-size: 10.5px;
+    font-weight: 500;
     color: #6b5a4a;
   }
 
@@ -549,7 +553,7 @@
 
   .comarca-popup .cp-item .cp-nom {
     font-size: 11.5px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--ink);
     line-height: 1.25;
   }
@@ -570,7 +574,7 @@
   .comarca-popup .cp-item .cp-impacte {
     font-size: 10.5px;
     color: var(--color-fosc-text);
-    font-weight: 500;
+    font-weight: 600;
     white-space: nowrap;
     margin-left: 8px;
   }
@@ -997,11 +1001,11 @@
   // en els noms de comarca quan aquests vinguin d'una font externa.
   comarques.forEach(c => { comarquesByName[c.nom.trim()] = c; });
 
-  // Degradat de comarques segons nombre de produccions: blanc (cap) i
-  // vuit graons entre els tres colors corporatius, en ordre clar → fosc
-  // (#EABE86 → #D9C0A9 → #BB8060), amb els tres tons exactes als graons
-  // 2, 4 i 7; els intermedis són interpolacions lineals entre ells.
-  const palette = ["#ffffff","#f4dec2","#EABE86","#e1bf97","#D9C0A9","#cfab91","#c5967a","#BB8060","#96664f"];
+  // Degradat de comarques segons nombre de produccions: blanc (cap) i vuit
+  // graons d'un sol to, ocre-groc corporatiu (Pantone 156 C, #EABE86), cada
+  // cop més saturat i fosc (mateixa tonalitat, no una barreja de colors
+  // diferents).
+  const palette = ["#ffffff","#f6e8d2","#f0dab8","#EABE86","#dda968","#cc9450","#b87d3d","#9c652e","#7a4d20"];
   function colorFor(count) {
     return palette[Math.min(count, palette.length - 1)];
   }
