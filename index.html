@@ -1146,7 +1146,7 @@
     comarcaExpandida = null;
     plegantComarca = true;
     map.once('moveend', () => { plegantComarca = false; });
-    map.flyTo(targetBounds.getCenter(), zoomBase, { duration: 1, easeLinearity: 0.2 });
+    map.flyTo(targetBounds.getCenter(), zoomBase, { duration: 0.7, easeLinearity: 0.2 });
   }
 
   function expandeixComarca(c, layer) {
@@ -1279,7 +1279,7 @@
     map.flyToBounds(layer.getBounds(), {
       padding: [40, 40],
       maxZoom: Math.min(zoomBase + 1, map.getMaxZoom()),
-      duration: 1.2,
+      duration: 0.8,
       easeLinearity: 0.15
     });
   }
@@ -2253,7 +2253,7 @@
     // deixa que ho faci el listener de 'zoomend' (ja registrat més amunt)
     // un cop el flyTo hagi arribat de debò al zoom mínim final — exactament
     // com ja fa seleccionaProduccio() per al seu propi flyTo.
-    map.flyTo(targetBounds.getCenter(), zoomBase, { duration: 1, easeLinearity: 0.2 });
+    map.flyTo(targetBounds.getCenter(), zoomBase, { duration: 0.7, easeLinearity: 0.2 });
   }
 
   // Funciona com una casella de selecció: clicar la mateixa producció que
@@ -2408,7 +2408,7 @@
     // duration/easeLinearity allarguen l'animació (per defecte Leaflet la
     // calcula automàticament segons la distància, i sol quedar massa
     // ràpida i sobtada per a un simple lleuger apropament).
-    const animacioSeleccio = { duration: 1, easeLinearity: 0.2 };
+    const animacioSeleccio = { duration: 0.7, easeLinearity: 0.2 };
     if (p.ubicacions.length === 1) {
       map.flyTo([p.ubicacions[0].lat, p.ubicacions[0].lon], zoomSeleccio, animacioSeleccio);
     } else {
