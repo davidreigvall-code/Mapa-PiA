@@ -246,20 +246,26 @@
     flex: 0 0 32%;
     min-width: 260px;
     max-width: 420px;
-    background: var(--panel);
+    background: #ffffff;
     color: var(--ink);
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 24px;
+    gap: 6px;
     padding: 32px 28px;
     overflow-y: auto;
   }
 
+  /* Franja de fons més suau que el blanc de la resta del panell, només
+     darrere de les xifres globals: les distingeix visualment de la llista
+     de sota sense fer servir un requadre (vora arrodonida/ombra). */
   .sp-stats {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    background: var(--panel);
+    margin: -32px -28px 0;
+    padding: 32px 28px 28px;
   }
 
   .sp-stats-row {
@@ -286,24 +292,23 @@
     margin-top: 3px;
   }
 
-  /* Targeta de fons per a la llista: la separa visualment de les xifres
-     globals de sobre com una superfície pròpia, en lloc de compartir el
-     mateix pla que la resta del panell. */
-  .sp-prods-card {
-    background: #FBF8F3;
-    border-radius: 10px;
-    margin: 0 -16px;
-    padding: 4px 18px;
-    box-shadow: 0 1px 3px rgba(20,18,15,0.1);
-  }
-
-  .sp-prods-list {
+  .sp-prods-section {
     display: flex;
     flex-direction: column;
   }
 
+  /* Marge negatiu perquè les files toquin banda i banda del panell (fins
+     als 28px de padding de #side-panel), amb el mateix padding horitzontal
+     restaurat a cada fila perquè el text quedi igual d'alineat que la
+     resta del contingut. */
+  .sp-prods-list {
+    display: flex;
+    flex-direction: column;
+    margin: 0 -28px;
+  }
+
   .sp-prod-row {
-    padding: 11px 0;
+    padding: 11px 28px;
     border-bottom: 1px solid #ddd2c0;
     cursor: pointer;
   }
@@ -314,14 +319,11 @@
 
   /* Producció seleccionada (clicada des de la llista o des d'un punt del
      mapa): coincideix visualment amb el punt destacat que apareix al mapa.
-     Marge negatiu perquè el fons ocupi tota l'amplada de la targeta (fins
-     als 18px de padding de .sp-prods-card), i una ratlla a l'esquerra com
-     a indicador addicional, ben visible encara que el fons de color sigui
-     subtil. */
+     La ratlla esquerra de 4px es descompta del padding perquè el text
+     mantingui el mateix alineament que a la resta de files. */
   .sp-prod-row.seleccionada {
     background: rgba(182, 71, 32, 0.22);
-    margin: 0 -18px;
-    padding: 11px 18px 11px 14px;
+    padding-left: 24px;
     border-left: 4px solid var(--ink);
   }
 
@@ -451,10 +453,10 @@
     border: none;
     box-shadow: 0 2px 8px rgba(20,18,15,0.35);
     border-radius: 3px;
-    padding: 3px 6px;
+    padding: 4px 7px;
     font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
     font-weight: 500;
-    font-size: 10px;
+    font-size: 11.5px;
     color: var(--ink);
     text-shadow: none;
     white-space: nowrap;
@@ -462,6 +464,16 @@
        expandida / producció seleccionada) via JS, no aquí globalment: vegeu
        el comentari a dalt de expandeixComarca() sobre per què. */
     pointer-events: none;
+  }
+
+  /* Anell fix al voltant del cartellet de la producció seleccionada (des de
+     la llista o clicant un punt/cartellet al mapa), perquè es distingeixi
+     clarament dels altres cartellets d'una comarca expandida (que
+     comparteixen la mateixa classe base .punt-produccio-label). Es manté
+     mentre la producció estigui seleccionada, sense animar-se ni desaparèixer
+     sol. */
+  .punt-produccio-label-seleccionat {
+    box-shadow: 0 2px 8px rgba(20,18,15,0.35), 0 0 0 3px var(--ink);
   }
 
   /* La "punxa" del cartellet ha d'agafar sempre el color del format
@@ -664,7 +676,7 @@
       </div>
     </div>
 
-    <div class="sp-prods-card">
+    <div class="sp-prods-section">
       <div class="sp-prods-list" id="prods-list"></div>
     </div>
   </aside>
@@ -1232,6 +1244,10 @@
         // pertanyen a la comarca expandida.
         marcador._comarcaNom = c.nom;
         marcador._direccioForçada = direccioForçada(p, u);
+        // Permet retrobar el marcador des de seleccionaProduccio() quan es
+        // clica el seu propi cartellet (opcions.nomesLlista), per afegir-hi
+        // l'anell polsant de selecció (vegeu punt-seleccio-polsa a la CSS).
+        marcador._nomProduccio = p.nom;
         marcadors.push(marcador);
       });
     });
@@ -1349,6 +1365,10 @@
   // es gira si cal), a partir d'un únic punt (el centre de la comarca) en
   // lloc de la posició canviant del cursor, perquè el resultat sigui
   // sempre el mateix.
+  // Costats forçats a mà per a comarques on el càlcul automàtic (segons quin
+  // costat deixa menys mapa per tapar) no dona el resultat volgut.
+  const COSTAT_POPUP_FORÇAT = { 'Urgell': 'dreta' };
+
   function decideixPosicioPopup(nomComarca, layer) {
     if (posicioPerComarca.has(nomComarca)) return posicioPerComarca.get(nomComarca);
     const centreMapa = map.latLngToContainerPoint(layer.getBounds().getCenter());
@@ -1363,7 +1383,7 @@
 
     const espaiEsquerra = clientX - mapRect.left;
     const espaiDreta = mapRect.right - clientX;
-    let h = espaiEsquerra < espaiDreta ? 'esquerra' : 'dreta';
+    let h = COSTAT_POPUP_FORÇAT[nomComarca] || (espaiEsquerra < espaiDreta ? 'esquerra' : 'dreta');
     const capDreta = clientX + DESPLACAMENT_CURSOR + width + MARGE_POPUP <= vw;
     const capEsquerra = clientX - DESPLACAMENT_CURSOR - width - MARGE_POPUP >= 0;
     if (h === 'dreta' && !capDreta && capEsquerra) h = 'esquerra';
@@ -1676,16 +1696,13 @@
         const html = buildPopupHtml(c);
 
         layer.on('mouseover', function (e) {
-          // Mentre hi ha una comarca expandida (clicada), o mentre el mapa
+          // Mentre hi ha una comarca expandida (clicada), mentre el mapa
           // encara torna cap a la posició inicial d'haver-ne plegat una
-          // (plegantComarca), no es mostra el popup de hover per a cap
-          // comarca: els cartellets dels punts ja en donen el detall
-          // directament sobre el mapa, i no volem que el popup aparegui
-          // enmig del zoom out. Una producció seleccionada NO bloqueja el
-          // hover (ni el clic, més avall): l'usuari ha de poder seguir
-          // explorant altres comarques sense haver de desseleccionar-la
-          // abans.
-          if (comarcaExpandida || plegantComarca) return;
+          // (plegantComarca), o mentre hi ha una producció seleccionada amb
+          // zoom (des de la llista o des d'un punt del mapa), no es mostra
+          // el popup de hover ni es ressalta cap comarca: l'atenció ha de
+          // quedar tota a la producció seleccionada.
+          if (comarcaExpandida || plegantComarca || (nomSeleccionat && seleccioAmbZoom)) return;
           this.setStyle(targetHoverStyle(c));
           this.bringToFront();
           ressaltaComarca(c.nom, this);
@@ -1693,7 +1710,7 @@
         });
 
         layer.on('mousemove', function (e) {
-          if (comarcaExpandida || plegantComarca) return;
+          if (comarcaExpandida || plegantComarca || (nomSeleccionat && seleccioAmbZoom)) return;
           // Segueix el ratolí (posició), però sense recalcular costatPopupActual:
           // aquest ja es va decidir un sol cop a 'mouseover'.
           positionCustomPopup(e.originalEvent.clientX, e.originalEvent.clientY);
@@ -2095,20 +2112,24 @@
     // massa buit entre punt i cartellet. Es posen de costat en comptes.
     "L'EQUILIBRI|Pla d'Urgell": 'left',
     'TÚNEL DE MONTCLAR|Pla d\'Urgell': 'right',
-    'TRAUMATIC|Pla d\'Urgell': 'bottom'
+    'TRAUMATIC|Pla d\'Urgell': 'bottom',
+    // Nena Beata i Curt Eccit Camarasa són molt a prop dins Noguera:
+    // l'automàtic hi deixava massa espai buit entre punt i cartellet.
+    'CURT ECCIT CAMARASA|Noguera': 'right',
+    'ARQUITECTURA EN DESÚS|Urgell': 'right'
   };
   function direccioForçada(p, u) {
     return DIRECCIO_FORÇADA[`${p.nom}|${u.comarca}`] || null;
   }
 
   // Mides aproximades d'un cartellet (CSS .punt-produccio-label: font-size
-  // 10px, padding 3px 6px): amplada mitjana de caràcter i alçada de línia
+  // 11.5px, padding 4px 7px): amplada mitjana de caràcter i alçada de línia
   // estimades, prou properes a la real per detectar solapaments sense
   // haver d'obrir el tooltip abans d'hora només per mesurar-lo.
-  const AMPLADA_CARACTER_CARTELLET = 6;
-  const ALCADA_CARTELLET = 20;
+  const AMPLADA_CARACTER_CARTELLET = 6.8;
+  const ALCADA_CARTELLET = 23;
   function rectangleCartell(cx, cy, direccioKey, text) {
-    const amplada = text.length * AMPLADA_CARACTER_CARTELLET + 14;
+    const amplada = text.length * AMPLADA_CARACTER_CARTELLET + 16;
     let left, top;
     if (direccioKey === 'top') { left = cx - amplada / 2; top = cy - ALCADA_CARTELLET; }
     else if (direccioKey === 'bottom') { left = cx - amplada / 2; top = cy; }
@@ -2212,20 +2233,34 @@
   // una correcció sobtada de la vista un instant abans de començar el
   // moviment cap a la nova producció — es notava sobretot amb produccions
   // de diverses ubicacions.
-  function netejaSeleccioProduccio() {
+  //
+  // mantenirScroll: true quan la crida ve d'un clic directe a la llista
+  // (seleccionaProduccio amb opcions.origenLlista): la fila ja és visible
+  // just on l'usuari l'ha clicat, així que el scroll no s'ha de tocar. Sense
+  // això, aquest reset a 0 saltava sempre abans de marcar la nova fila,
+  // deixant la llista amunt de tot i la fila clicada fora de vista.
+  function netejaSeleccioProduccio(mantenirScroll) {
     if (capaSeleccionada) {
       map.removeLayer(capaSeleccionada);
       capaSeleccionada = null;
     }
+    // Treu l'anell polsant de selecció (vegeu punt-seleccio-polsa a la CSS)
+    // d'on hagi quedat: al punt destacat de capaSeleccionada (ja eliminat a
+    // dalt) o, si la selecció venia d'un punt/cartellet ja visible dins una
+    // comarca expandida (opcions.nomesLlista), al seu propi cartellet
+    // permanent dins capaPuntsComarca, que NO es destrueix en desseleccionar.
+    document.querySelectorAll('.punt-produccio-label-seleccionat').forEach(el => {
+      el.classList.remove('punt-produccio-label-seleccionat');
+    });
     if (filaSeleccionadaEl) {
       filaSeleccionadaEl.classList.remove('seleccionada');
       filaSeleccionadaEl = null;
       // Sense cap producció seleccionada, la llista torna a dalt de tot.
-      // Si tot seguit es marca una nova fila (canvi de selecció), el propi
-      // mostraFilaSeleccionada() ho sobreescriu abans que el navegador
-      // arribi a pintar aquest scrollTop=0, així que no hi ha cap salt
-      // visible pel mig.
-      sidePanelEl.scrollTop = 0;
+      // Si tot seguit es marca una nova fila (canvi de selecció) que no ve
+      // de la llista, el propi mostraFilaSeleccionada() ho sobreescriu
+      // abans que el navegador arribi a pintar aquest scrollTop=0, així que
+      // no hi ha cap salt visible pel mig.
+      if (!mantenirScroll) sidePanelEl.scrollTop = 0;
     }
     nomSeleccionat = null;
   }
@@ -2293,7 +2328,7 @@
     // amb la que ve tot seguit i que la correcció de maxBounds l'agafi a
     // mig vol.
     map.stop();
-    netejaSeleccioProduccio();
+    netejaSeleccioProduccio(opcions.origenLlista);
 
     if (opcions.nomesLlista) {
       nomSeleccionat = p.nom;
@@ -2303,6 +2338,17 @@
       if (filaSeleccionadaEl) {
         filaSeleccionadaEl.classList.add('seleccionada');
         mostraFilaSeleccionada(filaSeleccionadaEl);
+      }
+      // El punt ja és visible al mapa (dins la comarca expandida): en lloc
+      // de crear-hi un marcador destacat a sobre, s'afegeix l'anell polsant
+      // directament al seu propi cartellet permanent.
+      if (capaPuntsComarca) {
+        capaPuntsComarca.eachLayer(marcador => {
+          if (marcador._nomProduccio !== p.nom) return;
+          const tooltip = marcador.getTooltip();
+          const tooltipEl = tooltip && tooltip.getElement();
+          if (tooltipEl) tooltipEl.classList.add('punt-produccio-label-seleccionat');
+        });
       }
       return;
     }
@@ -2334,7 +2380,7 @@
           direction: 'top',
           offset: [0, -8],
           permanent: true,
-          className: 'punt-produccio-label'
+          className: 'punt-produccio-label punt-produccio-label-seleccionat'
         })
         // Cal el seu propi listener de clic (el punt destacat no forma
         // part de cap altra capa amb clic ja enganxat): clicar-lo torna a
@@ -2393,8 +2439,9 @@
       filaSeleccionadaEl.classList.add('seleccionada');
       // La fila puja a la posició mig-dalt de la llista només quan la
       // selecció ve del mapa (la fila pot no ser visible en aquell
-      // moment): si es clica directament a la llista, la fila ja és
-      // visible i no cal desplaçar res.
+      // moment): si es clica directament a la llista, es queda seleccionada
+      // al lloc on ja era (netejaSeleccioProduccio() ja no toca el scroll
+      // en aquest cas, vegeu el seu paràmetre mantenirScroll).
       if (!opcions.origenLlista) {
         mostraFilaSeleccionada(filaSeleccionadaEl);
       }
