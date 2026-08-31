@@ -1698,11 +1698,11 @@
         layer.on('mouseover', function (e) {
           // Mentre hi ha una comarca expandida (clicada), mentre el mapa
           // encara torna cap a la posició inicial d'haver-ne plegat una
-          // (plegantComarca), o mentre hi ha una producció seleccionada amb
-          // zoom (des de la llista o des d'un punt del mapa), no es mostra
-          // el popup de hover ni es ressalta cap comarca: l'atenció ha de
-          // quedar tota a la producció seleccionada.
-          if (comarcaExpandida || plegantComarca || (nomSeleccionat && seleccioAmbZoom)) return;
+          // (plegantComarca) o d'haver desseleccionat una producció
+          // (desfixantProduccio), o mentre hi ha una producció seleccionada
+          // amb zoom (des de la llista o des d'un punt del mapa), no es
+          // mostra el popup de hover ni es ressalta cap comarca.
+          if (comarcaExpandida || plegantComarca || desfixantProduccio || (nomSeleccionat && seleccioAmbZoom)) return;
           this.setStyle(targetHoverStyle(c));
           this.bringToFront();
           ressaltaComarca(c.nom, this);
@@ -1710,7 +1710,7 @@
         });
 
         layer.on('mousemove', function (e) {
-          if (comarcaExpandida || plegantComarca || (nomSeleccionat && seleccioAmbZoom)) return;
+          if (comarcaExpandida || plegantComarca || desfixantProduccio || (nomSeleccionat && seleccioAmbZoom)) return;
           // Segueix el ratolí (posició), però sense recalcular costatPopupActual:
           // aquest ja es va decidir un sol cop a 'mouseover'.
           positionCustomPopup(e.originalEvent.clientX, e.originalEvent.clientY);
@@ -2226,6 +2226,13 @@
   // tornar a portar el mapa al centre (desfixaProduccio) o no.
   let seleccioAmbZoom = false;
 
+  // Mentre el mapa torna cap al centre en desseleccionar una producció
+  // (desfixaProduccio), es manté a true fins que el flyTo hi arriba de debò
+  // (moveend): igual que plegantComarca, el hover d'altres comarques queda
+  // desactivat durant aquest instant, perquè no aparegui el popup enmig
+  // del zoom out.
+  let desfixantProduccio = false;
+
   // Neteja només els elements visuals de la selecció (capa de punts, fila
   // ressaltada a la llista), sense tocar la restricció d'arrossegament del
   // mapa. Es fa servir en CANVIAR de producció seleccionada: si es
@@ -2288,6 +2295,8 @@
     // deixa que ho faci el listener de 'zoomend' (ja registrat més amunt)
     // un cop el flyTo hagi arribat de debò al zoom mínim final — exactament
     // com ja fa seleccionaProduccio() per al seu propi flyTo.
+    desfixantProduccio = true;
+    map.once('moveend', () => { desfixantProduccio = false; });
     map.flyTo(targetBounds.getCenter(), zoomBase, { duration: 0.7, easeLinearity: 0.2 });
   }
 
